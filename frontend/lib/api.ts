@@ -2,11 +2,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const TENANT_ID = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || '';
 
 export async function apiFetch<T>(path: string, options?: RequestInit & { token?: string }): Promise<T> {
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'x-tenant-id': TENANT_ID,
-    ...(options?.headers || {})
+    'x-tenant-id': TENANT_ID
   };
+
+  if (options?.headers) {
+    const incoming = new Headers(options.headers);
+    incoming.forEach((value, key) => {
+      headers[key] = value;
+    });
+  }
 
   if (options?.token) {
     headers.Authorization = `Bearer ${options.token}`;
@@ -32,4 +38,3 @@ export async function apiFetch<T>(path: string, options?: RequestInit & { token?
 }
 
 export { TENANT_ID };
-

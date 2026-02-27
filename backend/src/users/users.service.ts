@@ -7,6 +7,19 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { Role } from '../common/types/role.enum';
 
 type CreatedUserRow = { id: string };
+type UserViewRow = {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  document_id: string | null;
+  is_active: boolean;
+  role: Role;
+  regional_id: string | null;
+  coordinator_zone_id: string | null;
+  advisor_zone_id: string | null;
+  category: string | null;
+};
 
 @Injectable()
 export class UsersService {
@@ -70,7 +83,7 @@ export class UsersService {
   }
 
   async findAll(actor: RequestUser) {
-    const { rows } = await this.db.query(
+    const { rows } = await this.db.query<UserViewRow>(
       `
       SELECT
         u.id,
@@ -99,8 +112,8 @@ export class UsersService {
     return rows;
   }
 
-  async findOne(actor: RequestUser, id: string) {
-    const { rows } = await this.db.query(
+  async findOne(actor: RequestUser, id: string): Promise<UserViewRow> {
+    const { rows } = await this.db.query<UserViewRow>(
       `
       SELECT
         u.id,
@@ -186,4 +199,3 @@ export class UsersService {
     return { deleted: true, userId: found.id };
   }
 }
-

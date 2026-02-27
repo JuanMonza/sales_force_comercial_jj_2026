@@ -112,7 +112,7 @@ export class KpiService {
     const previousStartPos = params.length - 1;
     const previousEndPos = params.length;
 
-    const { rows } = await this.db.query(
+    const { rows } = await this.db.query<Record<string, unknown>>(
       `
       WITH filtered AS (
         SELECT s.*
@@ -154,7 +154,7 @@ export class KpiService {
 
     const response = {
       month: bounds.currentStart.slice(0, 7),
-      ...rows[0]
+      ...(rows[0] ?? {})
     };
 
     await this.cache.set(cacheKey, response, 180);
@@ -415,4 +415,3 @@ export class KpiService {
     return rows[0];
   }
 }
-
