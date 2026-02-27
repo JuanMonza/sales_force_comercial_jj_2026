@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: salesforce_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+      - ./sql/002_partitions.sql:/docker-entrypoint-initdb.d/002_partitions.sql:ro
+      - ./sql/003_seed.sql:/docker-entrypoint-initdb.d/003_seed.sql:ro
+
+  redis:
+    image: redis:7
+    container_name: salesforce_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: salesforce_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      BACKEND_PORT: ${BACKEND_PORT}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      DEFAULT_TENANT_ID: ${DEFAULT_TENANT_ID}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: salesforce_frontend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_DEFAULT_TENANT_ID: ${NEXT_PUBLIC_DEFAULT_TENANT_ID}
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+
