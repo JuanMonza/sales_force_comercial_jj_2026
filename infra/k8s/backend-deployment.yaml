@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: salesforce-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: salesforce-backend
+  template:
+    metadata:
+      labels:
+        app: salesforce-backend
+    spec:
+      containers:
+        - name: backend
+          image: salesforce-backend:latest
+          ports:
+            - containerPort: 4000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: BACKEND_PORT
+              value: "4000"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: salesforce-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: salesforce-secrets
+                  key: redis-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: salesforce-secrets
+                  key: jwt-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: salesforce-backend
+spec:
+  selector:
+    app: salesforce-backend
+  ports:
+    - port: 4000
+      targetPort: 4000
+  type: ClusterIP
+
