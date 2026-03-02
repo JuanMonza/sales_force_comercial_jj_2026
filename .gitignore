@@ -2,7 +2,16 @@ node_modules
 .next
 dist
 coverage
+
+# Variables de entorno — NUNCA versionar
 .env
+.env.local
+.env.*.local
+.env.example
+
+# Seeds con credenciales — usar 003_seed.example.sql como plantilla
+sql/003_seed.sql
+
 .DS_Store
 *.log
 backend/node_modules
