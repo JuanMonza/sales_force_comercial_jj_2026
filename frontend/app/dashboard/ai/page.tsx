@@ -5,6 +5,23 @@ import { motion } from 'framer-motion';
 import { apiFetch } from '@/lib/api';
 import { getToken, getUser } from '@/lib/auth';
 
+const REC_PAGE_SIZE = 8;
+
+function semaphoreClass(v: number | null | undefined): string {
+  if (v === null || v === undefined) return 'text-slate-400';
+  if (v >= 100) return 'font-bold text-cyan-400';
+  if (v >= 80)  return 'font-bold text-green-400';
+  if (v >= 60)  return 'font-bold text-yellow-400';
+  if (v >= 40)  return 'font-bold text-orange-400';
+  return 'font-bold text-rose-400';
+}
+function semaphoreEmoji(v: number | null | undefined): string {
+  if (v === null || v === undefined) return '';
+  if (v >= 100) return '🔵'; if (v >= 80) return '🟢';
+  if (v >= 60)  return '🟡'; if (v >= 40) return '🟠';
+  return '🔴';
+}
+
 type Forecast = {
   month: string;
   scopeType: string;
@@ -72,6 +89,7 @@ export default function AiPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [recPage, setRecPage] = useState(1);
 
   const loadData = async (selectedMonth: string) => {
     const token = getToken();
@@ -91,6 +109,7 @@ export default function AiPage() {
       setForecast(forecastRes);
       setAnomalies(anomaliesRes);
       setRecommendations(recRes);
+      setRecPage(1);
     } catch (err: any) {
       setError(err.message || 'No fue posible cargar IA comercial');
     } finally {
@@ -164,20 +183,25 @@ export default function AiPage() {
       {error ? <p className="text-rose text-sm">{error}</p> : null}
       {loading ? <p className="text-slate-300 text-sm">Cargando...</p> : null}
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="glass-card p-4">
           <p className="text-xs text-slate-400 uppercase tracking-[0.12em]">Forecast cierre</p>
           <p className="text-2xl font-semibold mt-1">{money(forecast?.forecastNominal ?? 0)}</p>
           <p className="text-xs text-slate-400 mt-2">Observado: {money(forecast?.observedNominal ?? 0)}</p>
+          <p className="text-xs text-slate-500 mt-1">Banda: {money(forecast?.lowerBand ?? 0)} → {money(forecast?.upperBand ?? 0)}</p>
         </div>
         <div className="glass-card p-4">
           <p className="text-xs text-slate-400 uppercase tracking-[0.12em]">Confianza modelo</p>
-          <p className="text-2xl font-semibold mt-1">{forecast?.confidenceScore ?? 0}%</p>
-          <p className="text-xs text-slate-400 mt-2">Version: {forecast?.modelVersion ?? '-'}</p>
+          <p className={`text-2xl font-semibold mt-1 ${semaphoreClass(forecast?.confidenceScore)}`}>
+            {semaphoreEmoji(forecast?.confidenceScore)} {forecast?.confidenceScore ?? 0}%
+          </p>
+          <p className="text-xs text-slate-400 mt-2">Versión: {forecast?.modelVersion ?? '-'}</p>
         </div>
         <div className="glass-card p-4">
           <p className="text-xs text-slate-400 uppercase tracking-[0.12em]">Tendencia</p>
-          <p className="text-2xl font-semibold mt-1">{forecast?.trend ?? '-'}</p>
+          <p className="text-2xl font-semibold mt-1">
+            {forecast?.trend === 'UP' ? '📈' : forecast?.trend === 'DOWN' ? '📉' : '➡️'} {forecast?.trend ?? '-'}
+          </p>
           <p className="text-xs text-slate-400 mt-2">
             Vs mes anterior: {forecast?.variationVsPreviousMonthPct?.toFixed(2) ?? '-'}%
           </p>
@@ -228,29 +252,63 @@ export default function AiPage() {
           </div>
 
           <h3 className="font-semibold mt-4 mb-2">Acciones por asesor</h3>
-          <div className="space-y-2 max-h-[250px] overflow-auto">
-            {(recommendations?.advisorActions ?? []).slice(0, 16).map((row, idx) => (
-              <div key={`${row.advisorName}-${idx}`} className="rounded-lg border border-slate-700 p-3">
-                <div className="flex items-center justify-between gap-3">
+          <div className="space-y-2">
+            {(recommendations?.advisorActions ?? [])
+              .slice((recPage - 1) * REC_PAGE_SIZE, recPage * REC_PAGE_SIZE)
+              .map((row, idx) => (
+              <div key={`${row.advisorName}-${idx}`} className="rounded-xl border border-slate-700/60 p-3 hover:bg-slate-800/40 transition-colors">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
                   <p className="font-medium text-sm">{row.advisorName}</p>
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold ${semaphoreClass(row.porcentajeCumplimiento)}`}>
+                      {semaphoreEmoji(row.porcentajeCumplimiento)} {row.porcentajeCumplimiento.toFixed(1)}%
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${
                       row.priority === 'ALTA'
-                        ? 'bg-rose/20 text-rose'
+                        ? 'bg-rose/20 text-rose border-rose/30'
                         : row.priority === 'MEDIA'
-                          ? 'bg-amber/20 text-amber'
-                          : 'bg-mint/20 text-mint'
-                    }`}
-                  >
-                    {row.priority}
-                  </span>
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                          : 'bg-green-500/20 text-green-300 border-green-500/30'
+                    }`}>
+                      {row.priority}
+                    </span>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-300 mt-1">{row.reason}</p>
-                <p className="text-xs text-slate-400 mt-1">Cumplimiento: {row.porcentajeCumplimiento.toFixed(2)}%</p>
-                <p className="text-xs mt-2">{row.action}</p>
+                <div className="mt-1.5 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      row.porcentajeCumplimiento >= 100 ? 'bg-cyan-400' :
+                      row.porcentajeCumplimiento >= 80  ? 'bg-green-400' :
+                      row.porcentajeCumplimiento >= 60  ? 'bg-yellow-400' :
+                      row.porcentajeCumplimiento >= 40  ? 'bg-orange-400' : 'bg-rose-400'
+                    }`}
+                    style={{ width: `${Math.min(row.porcentajeCumplimiento, 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-slate-300 mt-1.5">{row.reason}</p>
+                <p className="text-xs text-slate-400 mt-1">📍 {row.zona} · {row.regional}</p>
+                <p className="text-xs mt-1.5 text-white/80">→ {row.action}</p>
               </div>
             ))}
           </div>
+
+          {/* Paginación recomendaciones */}
+          {(recommendations?.advisorActions?.length ?? 0) > REC_PAGE_SIZE && (
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700">
+              <p className="text-xs text-slate-400">
+                {recPage}·{Math.ceil((recommendations?.advisorActions?.length ?? 0) / REC_PAGE_SIZE)} ·{' '}
+                {recommendations?.advisorActions?.length} asesores
+              </p>
+              <div className="flex gap-2">
+                <button disabled={recPage === 1} onClick={() => setRecPage((p) => p - 1)}
+                  className="px-3 py-1 rounded text-xs border border-slate-700 disabled:opacity-30 hover:bg-slate-800">‹</button>
+                <button
+                  disabled={recPage >= Math.ceil((recommendations?.advisorActions?.length ?? 0) / REC_PAGE_SIZE)}
+                  onClick={() => setRecPage((p) => p + 1)}
+                  className="px-3 py-1 rounded text-xs border border-slate-700 disabled:opacity-30 hover:bg-slate-800">›</button>
+              </div>
+            </div>
+          )}
         </div>
       </section>
     </div>

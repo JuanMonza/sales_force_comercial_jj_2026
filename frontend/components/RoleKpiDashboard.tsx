@@ -221,6 +221,9 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
   const [dailySales, setDailySales] = useState<DailySalesRow[]>([]);
   const [tracking, setTracking] = useState<ReportingTracking | null>(null);
   const [advisorNameFilter, setAdvisorNameFilter] = useState('');
+  const [complianceCurrPage, setComplianceCurrPage] = useState(1);
+  const [compliancePrevPage, setCompliancePrevPage] = useState(1);
+  const COMP_PAGE_SIZE = 20;
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -632,9 +635,9 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
                     ? row.nombreAsesor.toLowerCase().includes(advisorNameFilter.toLowerCase())
                     : true
                 )
-                .slice(0, 80)
+                .slice((complianceCurrPage - 1) * COMP_PAGE_SIZE, complianceCurrPage * COMP_PAGE_SIZE)
                 .map((row, idx) => (
-                <tr key={`${row.cedulaAsesor}-${idx}`} className="border-b border-slate-800/60">
+                <tr key={`${row.cedulaAsesor}-${idx}`} className="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors">
                   <td className="py-2 pr-3">{row.director}</td>
                   <td className="py-2 pr-3">{row.regional}</td>
                   <td className="py-2 pr-3">{row.zona}</td>
@@ -658,6 +661,38 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
             </tbody>
           </table>
         </div>
+        {/* Paginación mes actual */}
+        {(() => {
+          const filteredRows = complianceCurrent.filter((r) =>
+            advisorNameFilter ? r.nombreAsesor.toLowerCase().includes(advisorNameFilter.toLowerCase()) : true
+          );
+          const totalPages = Math.ceil(filteredRows.length / COMP_PAGE_SIZE);
+          if (totalPages <= 1) return null;
+          return (
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/60">
+              <p className="text-xs text-slate-400">Pág {complianceCurrPage} de {totalPages} · {filteredRows.length} asesores</p>
+              <div className="flex gap-1">
+                <button disabled={complianceCurrPage === 1} onClick={() => setComplianceCurrPage((p) => p - 1)}
+                  className="px-3 py-1 rounded text-xs border border-slate-700 disabled:opacity-30 hover:bg-slate-800">‹</button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const start = Math.max(1, complianceCurrPage - 2);
+                  const page = start + i;
+                  if (page > totalPages) return null;
+                  return (
+                    <button key={page} onClick={() => setComplianceCurrPage(page)}
+                      className={`px-3 py-1 rounded text-xs border ${
+                        page === complianceCurrPage
+                          ? 'border-cyan-500 bg-cyan-500/20 text-cyan-300'
+                          : 'border-slate-700 hover:bg-slate-800'
+                      }`}>{page}</button>
+                  );
+                })}
+                <button disabled={complianceCurrPage >= totalPages} onClick={() => setComplianceCurrPage((p) => p + 1)}
+                  className="px-3 py-1 rounded text-xs border border-slate-700 disabled:opacity-30 hover:bg-slate-800">›</button>
+              </div>
+            </div>
+          );
+        })()}
       </section>
 
       <section className="glass-card p-4">
@@ -686,9 +721,9 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
                     ? row.nombreAsesor.toLowerCase().includes(advisorNameFilter.toLowerCase())
                     : true
                 )
-                .slice(0, 80)
+                .slice((compliancePrevPage - 1) * COMP_PAGE_SIZE, compliancePrevPage * COMP_PAGE_SIZE)
                 .map((row, idx) => (
-                <tr key={`${row.cedulaAsesor}-prev-${idx}`} className="border-b border-slate-800/60">
+                <tr key={`${row.cedulaAsesor}-prev-${idx}`} className="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors">
                   <td className="py-2 pr-3">{row.director}</td>
                   <td className="py-2 pr-3">{row.regional}</td>
                   <td className="py-2 pr-3">{row.zona}</td>
@@ -707,6 +742,38 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
             </tbody>
           </table>
         </div>
+        {/* Paginación mes anterior */}
+        {(() => {
+          const filteredRows = compliancePrevious.filter((r) =>
+            advisorNameFilter ? r.nombreAsesor.toLowerCase().includes(advisorNameFilter.toLowerCase()) : true
+          );
+          const totalPages = Math.ceil(filteredRows.length / COMP_PAGE_SIZE);
+          if (totalPages <= 1) return null;
+          return (
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700/60">
+              <p className="text-xs text-slate-400">Pág {compliancePrevPage} de {totalPages} · {filteredRows.length} asesores</p>
+              <div className="flex gap-1">
+                <button disabled={compliancePrevPage === 1} onClick={() => setCompliancePrevPage((p) => p - 1)}
+                  className="px-3 py-1 rounded text-xs border border-slate-700 disabled:opacity-30 hover:bg-slate-800">‹</button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const start = Math.max(1, compliancePrevPage - 2);
+                  const page = start + i;
+                  if (page > totalPages) return null;
+                  return (
+                    <button key={page} onClick={() => setCompliancePrevPage(page)}
+                      className={`px-3 py-1 rounded text-xs border ${
+                        page === compliancePrevPage
+                          ? 'border-cyan-500 bg-cyan-500/20 text-cyan-300'
+                          : 'border-slate-700 hover:bg-slate-800'
+                      }`}>{page}</button>
+                  );
+                })}
+                <button disabled={compliancePrevPage >= totalPages} onClick={() => setCompliancePrevPage((p) => p + 1)}
+                  className="px-3 py-1 rounded text-xs border border-slate-700 disabled:opacity-30 hover:bg-slate-800">›</button>
+              </div>
+            </div>
+          );
+        })()}
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">

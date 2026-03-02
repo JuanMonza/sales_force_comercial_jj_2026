@@ -40,11 +40,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6">
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 md:gap-6 max-w-[1500px] mx-auto">
-        <Sidebar user={user} />
-        <section className="space-y-4">{children}</section>
-      </div>
+    <div className="min-h-screen">
+      <Sidebar user={user} />
+      <main className="min-h-screen pl-0 transition-all duration-300">
+        <div className="max-w-[1500px] mx-auto p-4 md:p-6 space-y-4">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }
