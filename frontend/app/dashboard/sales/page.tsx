@@ -3,7 +3,8 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   Area, AreaChart, Bar, BarChart,
-  CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis
+  CartesianGrid, Cell, Legend,
+  ResponsiveContainer, Tooltip, XAxis, YAxis
 } from 'recharts';
 import { AnimatePresence, motion } from 'framer-motion';
 import { apiFetch } from '@/lib/api';
@@ -25,8 +26,32 @@ type SaleRow = {
 const CHART_TYPES = ['Barras', 'Cilindro', 'Velas'] as const;
 type ChartType = typeof CHART_TYPES[number];
 
+const PALETTE = [
+  '#23c7d9','#6ef2c8','#ffb142','#ff6b81','#748ffc',
+  '#80ed99','#a29bfe','#fd79a8','#ffeaa7','#74b9ff',
+  '#55efc4','#fdcb6e','#e17055','#81ecec','#dfe6e9'
+];
+
 function money(v: number | string) {
   return `$${Number(v).toLocaleString('es-CO')}`;
+}
+
+function shortName(s: string, max = 14) {
+  return s.length > max ? s.slice(0, max - 1) + '.' : s;
+}
+
+const TT = {
+  contentStyle: { background: '#0f172a', border: '1px solid #334155', borderRadius: 8 },
+  labelStyle: { color: '#e2e8f0' },
+  itemStyle: { color: '#cbd5e1' },
+};
+
+function semaphoreColor(pct: number): string {
+  if (pct >= 100) return '#23c7d9';
+  if (pct >= 80)  return '#4ade80';
+  if (pct >= 60)  return '#facc15';
+  if (pct >= 40)  return '#fb923c';
+  return '#f87171';
 }
 
 function ChartBar({ pct, color }: { pct: number; color: string }) {
@@ -39,6 +64,113 @@ function ChartBar({ pct, color }: { pct: number; color: string }) {
         className="h-full rounded-full"
         style={{ background: color }}
       />
+    </div>
+  );
+}
+
+type ChartPanelProps = {
+  title: string;
+  data: { name: string; valor: number }[];
+  chartType: ChartType;
+  height?: number;
+  useSemaphore?: boolean;
+  maxVal?: number;
+};
+
+function ChartPanel({ title, data, chartType, height = 220, useSemaphore, maxVal }: ChartPanelProps) {
+  if (!data.length) return null;
+  const max = maxVal ?? Math.max(...data.map(d => d.valor), 1);
+  return (
+    <div className="glass-card p-4">
+      <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">{title}</p>
+      <ResponsiveContainer width="100%" height={height}>
+        {chartType === 'Velas' ? (
+          <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#23c7d9" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#23c7d9" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+            <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} />
+            <Tooltip {...TT} formatter={(v: number) => [v.toLocaleString('es-CO'), 'Valor']} />
+            <Area type="monotone" dataKey="valor" stroke="#23c7d9" strokeWidth={2} fill="url(#ag)" />
+          </AreaChart>
+        ) : (
+          <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+            <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} />
+            <Tooltip {...TT} formatter={(v: number) => [v.toLocaleString('es-CO'), 'Valor']} />
+            <Bar
+              dataKey="valor"
+              radius={chartType === 'Cilindro' ? [10, 10, 0, 0] : [3, 3, 0, 0]}
+              maxBarSize={chartType === 'Cilindro' ? 30 : 50}
+            >
+              {data.map((d, i) => (
+                <Cell key={i} fill={useSemaphore ? semaphoreColor((d.valor / max) * 100) : PALETTE[i % PALETTE.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        )}
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+type CompChartProps = {
+  title: string;
+  data: { name: string; mesActual: number; mesAnterior: number }[];
+  chartType: ChartType;
+};
+
+function CompChart({ title, data, chartType }: CompChartProps) {
+  if (!data.length) return null;
+  return (
+    <div className="glass-card p-4">
+      <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">{title}</p>
+      <div className="flex gap-4 mb-2">
+        <span className="flex items-center gap-1.5 text-xs text-slate-300">
+          <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#23c7d9' }} /> Mes actual
+        </span>
+        <span className="flex items-center gap-1.5 text-xs text-slate-300">
+          <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#748ffc' }} /> Mes anterior
+        </span>
+      </div>
+      <ResponsiveContainer width="100%" height={220}>
+        {chartType === 'Velas' ? (
+          <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="ga" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#23c7d9" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#23c7d9" stopOpacity={0.02} />
+              </linearGradient>
+              <linearGradient id="gb" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#748ffc" stopOpacity={0.35} />
+                <stop offset="95%" stopColor="#748ffc" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+            <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} />
+            <Tooltip {...TT} formatter={(v: number, n: string) => [v.toLocaleString('es-CO'), n === 'mesActual' ? 'Mes actual' : 'Mes anterior']} />
+            <Area type="monotone" dataKey="mesActual" stroke="#23c7d9" strokeWidth={2} fill="url(#ga)" />
+            <Area type="monotone" dataKey="mesAnterior" stroke="#748ffc" strokeWidth={2} fill="url(#gb)" />
+          </AreaChart>
+        ) : (
+          <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+            <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} />
+            <Tooltip {...TT} formatter={(v: number, n: string) => [v.toLocaleString('es-CO'), n === 'mesActual' ? 'Mes actual' : 'Mes anterior']} />
+            <Legend formatter={(v) => v === 'mesActual' ? 'Mes actual' : 'Mes anterior'} wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
+            <Bar dataKey="mesActual" fill="#23c7d9" radius={chartType === 'Cilindro' ? [8, 8, 0, 0] : [3, 3, 0, 0]} maxBarSize={chartType === 'Cilindro' ? 22 : 40} />
+            <Bar dataKey="mesAnterior" fill="#748ffc" radius={chartType === 'Cilindro' ? [8, 8, 0, 0] : [3, 3, 0, 0]} maxBarSize={chartType === 'Cilindro' ? 22 : 40} />
+          </BarChart>
+        )}
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -63,10 +195,9 @@ export default function SalesPage() {
       const query = new URLSearchParams();
       if (params?.startDate) query.set('startDate', params.startDate);
       if (params?.endDate) query.set('endDate', params.endDate);
-      query.set('limit', '500');
+      query.set('limit', '2000');
       const data = await apiFetch<SaleRow[]>(`/sales?${query.toString()}`, { token });
       setRows(data);
-      // Abrir todos por defecto
       const regions: Record<string, boolean> = {};
       data.forEach((r) => { regions[r.regional_name] = true; });
       setOpenRegionals(regions);
@@ -87,16 +218,100 @@ export default function SalesPage() {
   const filtered = useMemo(() => {
     return rows.filter((r) => {
       const byAdvisor = advisorFilter
-        ? r.advisor_name.toLowerCase().includes(advisorFilter.toLowerCase())
-        : true;
+        ? r.advisor_name.toLowerCase().includes(advisorFilter.toLowerCase()) : true;
       const byCoord = coordinatorFilter
-        ? (r.coordinator_name ?? '').toLowerCase().includes(coordinatorFilter.toLowerCase())
-        : true;
+        ? (r.coordinator_name ?? '').toLowerCase().includes(coordinatorFilter.toLowerCase()) : true;
       return byAdvisor && byCoord;
     });
   }, [rows, advisorFilter, coordinatorFilter]);
 
-  // Agrupar por regional
+  // Comparativa mes vs mes anterior derivada de sale_date
+  const monthlyComp = useMemo(() => {
+    const byMonth: Record<string, { amount: number; count: number }> = {};
+    filtered.forEach((r) => {
+      const m = r.sale_date.slice(0, 7);
+      if (!byMonth[m]) byMonth[m] = { amount: 0, count: 0 };
+      byMonth[m].amount += Number(r.sale_amount);
+      byMonth[m].count += 1;
+    });
+    const months = Object.keys(byMonth).sort();
+    if (months.length < 2) return null;
+    // Tomar los ultimos 6 meses maximo para la comparativa
+    const last = months.slice(-6);
+    return {
+      countData: last.map((m, i) => ({
+        name: m.slice(5) + '/' + m.slice(2, 4),
+        mesActual: byMonth[m].count,
+        mesAnterior: i > 0 ? byMonth[last[i - 1]].count : 0,
+      })),
+      nominalData: last.map((m, i) => ({
+        name: m.slice(5) + '/' + m.slice(2, 4),
+        mesActual: Math.round(byMonth[m].amount),
+        mesAnterior: i > 0 ? Math.round(byMonth[last[i - 1]].amount) : 0,
+      })),
+      months: last,
+    };
+  }, [filtered]);
+
+  // Graficas de distribucion
+  const byRegionalChart = useMemo(() => {
+    const map: Record<string, { count: number; amount: number }> = {};
+    filtered.forEach((r) => {
+      if (!map[r.regional_name]) map[r.regional_name] = { count: 0, amount: 0 };
+      map[r.regional_name].count++;
+      map[r.regional_name].amount += Number(r.sale_amount);
+    });
+    return Object.entries(map).sort((a, b) => b[1].count - a[1].count)
+      .map(([k, v]) => ({ name: shortName(k), valor: v.count, nominal: Math.round(v.amount) }));
+  }, [filtered]);
+
+  const byPlanChart = useMemo(() => {
+    const map: Record<string, number> = {};
+    filtered.forEach((r) => {
+      const k = r.plan_name || 'Sin plan';
+      map[k] = (map[k] || 0) + 1;
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 10)
+      .map(([name, valor]) => ({ name: shortName(name), valor }));
+  }, [filtered]);
+
+  const byStatusChart = useMemo(() => {
+    const map: Record<string, number> = {};
+    filtered.forEach((r) => {
+      const k = r.status_name || 'Sin estado';
+      map[k] = (map[k] || 0) + 1;
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 10)
+      .map(([name, valor]) => ({ name: shortName(name), valor }));
+  }, [filtered]);
+
+  const topAdvisorsCount = useMemo(() => {
+    const map: Record<string, number> = {};
+    filtered.forEach((r) => { map[r.advisor_name] = (map[r.advisor_name] || 0) + 1; });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 10)
+      .map(([name, valor]) => ({ name: shortName(name), valor }));
+  }, [filtered]);
+
+  const topAdvisorsNominal = useMemo(() => {
+    const map: Record<string, number> = {};
+    filtered.forEach((r) => { map[r.advisor_name] = (map[r.advisor_name] || 0) + Number(r.sale_amount); });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 10)
+      .map(([name, valor]) => ({ name: shortName(name), valor: Math.round(valor) }));
+  }, [filtered]);
+
+  const byZoneChart = useMemo(() => {
+    const map: Record<string, number> = {};
+    filtered.forEach((r) => { map[r.zone_name] = (map[r.zone_name] || 0) + 1; });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 12)
+      .map(([name, valor]) => ({ name: shortName(name), valor }));
+  }, [filtered]);
+
+  const nominalByRegional = useMemo(() =>
+    byRegionalChart.map(d => ({ name: d.name, valor: d.nominal ?? 0 })),
+    [byRegionalChart]
+  );
+
+  // Acordeon por regional
   const byRegional = useMemo(() => {
     const map: Record<string, SaleRow[]> = {};
     filtered.forEach((r) => {
@@ -109,32 +324,30 @@ export default function SalesPage() {
   const regionals = Object.keys(byRegional).sort();
   const maxRegionalSales = Math.max(...regionals.map((k) => byRegional[k].length), 1);
 
-  const toggleRegional = (name: string) => {
+  const toggleRegional = (name: string) =>
     setOpenRegionals((prev) => ({ ...prev, [name]: !prev[name] }));
-  };
+
+  const hasFilter = advisorFilter || coordinatorFilter;
 
   return (
     <div className="space-y-4">
+      {/* Encabezado + selector */}
       <header className="glass-card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Ventas por período</h1>
+          <h1 className="text-2xl font-semibold">Ventas por periodo</h1>
           <p className="text-slate-300 text-sm mt-1">
-            Vista agrupada por regional con acordeón. Filtra por fechas o nombre de asesor/coordinador.
+            Analisis comparativo mes a mes. Filtra por asesor o coordinador para comparativas especificas.
           </p>
         </div>
-        {/* Selector tipo de gráfica */}
         <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-800/60 border border-slate-700">
           {CHART_TYPES.map((type) => (
-            <button
-              key={type}
-              onClick={() => setChartType(type)}
+            <button key={type} onClick={() => setChartType(type)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 chartType === type
                   ? 'bg-cyan-500 text-slate-900 shadow-lg shadow-cyan-500/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-700'
-              }`}
-            >
-              {type === 'Barras' ? 'Barras' : type === 'Cilindro' ? 'Cilindros' : 'Velas'}
+              }`}>
+              {type === 'Barras' ? 'Barras' : type === 'Cilindro' ? 'Cilindros' : 'Area'}
             </button>
           ))}
         </div>
@@ -167,7 +380,8 @@ export default function SalesPage() {
         <button type="submit" className="rounded-lg bg-cyan text-ink font-semibold px-4 py-2 hover:brightness-110">
           Aplicar
         </button>
-        <button type="button" onClick={() => { setStartDate(''); setEndDate(''); setAdvisorFilter(''); setCoordinatorFilter(''); fetchSales(); }}
+        <button type="button"
+          onClick={() => { setStartDate(''); setEndDate(''); setAdvisorFilter(''); setCoordinatorFilter(''); fetchSales(); }}
           className="rounded-lg border border-slate-600 px-4 py-2 text-slate-300">
           Limpiar
         </button>
@@ -175,88 +389,52 @@ export default function SalesPage() {
 
       {error ? <p className="text-rose text-sm">{error}</p> : null}
       {loading ? <p className="text-slate-300 text-sm animate-pulse">Cargando ventas...</p> : null}
+      {hasFilter && (
+        <p className="text-xs text-cyan px-1">
+          Filtro activo: {[advisorFilter && `asesor "${advisorFilter}"`, coordinatorFilter && `coordinador "${coordinatorFilter}"`].filter(Boolean).join(', ')} — {filtered.length} ventas encontradas
+        </p>
+      )}
 
-      {/* KPI total */}
+      {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="glass-card p-4">
-          <p className="text-xs text-slate-400 uppercase tracking-wide">Total ventas</p>
-          <p className="text-2xl font-bold text-white mt-1">{filtered.length}</p>
-        </div>
-        <div className="glass-card p-4">
-          <p className="text-xs text-slate-400 uppercase tracking-wide">Nominal total</p>
-          <p className="text-2xl font-bold text-cyan mt-1">
-            {money(filtered.reduce((sum, r) => sum + Number(r.sale_amount), 0))}
-          </p>
-        </div>
-        <div className="glass-card p-4">
-          <p className="text-xs text-slate-400 uppercase tracking-wide">Regionales activas</p>
-          <p className="text-2xl font-bold text-white mt-1">{regionals.length}</p>
-        </div>
-        <div className="glass-card p-4">
-          <p className="text-xs text-slate-400 uppercase tracking-wide">Aprobado total</p>
-          <p className="text-2xl font-bold text-green-400 mt-1">
-            {money(filtered.reduce((sum, r) => sum + Number(r.approved_amount), 0))}
-          </p>
-        </div>
+        {[
+          { label: 'Total ventas', value: filtered.length.toLocaleString('es-CO'), color: 'text-white' },
+          { label: 'Nominal total', value: money(filtered.reduce((s, r) => s + Number(r.sale_amount), 0)), color: 'text-cyan' },
+          { label: 'Regionales', value: regionals.length.toLocaleString('es-CO'), color: 'text-white' },
+          { label: 'Aprobado total', value: money(filtered.reduce((s, r) => s + Number(r.approved_amount), 0)), color: 'text-green-400' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="glass-card p-4">
+            <p className="text-xs text-slate-400 uppercase tracking-wide">{label}</p>
+            <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Grafico resumen por regional */}
-      {regionals.length > 0 && (() => {
-        const chartData = regionals.map((r) => ({
-          name: r.length > 14 ? r.slice(0, 13) + '.' : r,
-          ventas: byRegional[r].length,
-          nominal: Math.round(byRegional[r].reduce((s, x) => s + Number(x.sale_amount), 0)),
-        }));
-        const COLORS = ['#23c7d9','#6ef2c8','#ffb142','#ff6b81','#748ffc','#80ed99','#a29bfe','#fd79a8'];
-        return (
-          <div className="glass-card p-4">
-            <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Ventas por regional — {chartType}</p>
-            <ResponsiveContainer width="100%" height={220}>
-              {chartType === 'Velas' ? (
-                <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#23c7d9" stopOpacity={0.45} />
-                      <stop offset="95%" stopColor="#23c7d9" stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
-                    labelStyle={{ color: '#e2e8f0' }}
-                    formatter={(v: number) => [v, 'Ventas']}
-                  />
-                  <Area type="monotone" dataKey="ventas" stroke="#23c7d9" strokeWidth={2} fill="url(#areaGrad)" />
-                </AreaChart>
-              ) : (
-                <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
-                    labelStyle={{ color: '#e2e8f0' }}
-                    formatter={(v: number) => [v, 'Ventas']}
-                  />
-                  <Bar
-                    dataKey="ventas"
-                    radius={chartType === 'Cilindro' ? [10, 10, 0, 0] : [3, 3, 0, 0]}
-                    maxBarSize={chartType === 'Cilindro' ? 28 : 48}
-                  >
-                    {chartData.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              )}
-            </ResponsiveContainer>
+      {/* Comparativa mensual — aparece cuando hay datos de varios meses */}
+      {monthlyComp && (
+        <div className="space-y-3">
+          <p className="text-sm font-semibold text-slate-300 px-1">Comparativa mes a mes</p>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            <CompChart title="Cantidad de ventas — mes actual vs anterior" data={monthlyComp.countData} chartType={chartType} />
+            <CompChart title="Nominal ($) — mes actual vs anterior" data={monthlyComp.nominalData} chartType={chartType} />
           </div>
-        );
-      })()}
+        </div>
+      )}
+
+      {/* Graficas de distribucion */}
+      <p className="text-sm font-semibold text-slate-300 px-1">Distribucion de ventas</p>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+        <ChartPanel title="Ventas por regional (cantidad)" data={byRegionalChart} chartType={chartType} />
+        <ChartPanel title="Ventas por regional (nominal $)" data={nominalByRegional} chartType={chartType} useSemaphore />
+        <ChartPanel title="Ventas por plan" data={byPlanChart} chartType={chartType} />
+        <ChartPanel title="Ventas por estado" data={byStatusChart} chartType={chartType} />
+        <ChartPanel title="Top 10 asesores (cantidad de ventas)" data={topAdvisorsCount} chartType={chartType} useSemaphore />
+        <ChartPanel title="Top 10 asesores (nominal $)" data={topAdvisorsNominal} chartType={chartType} />
+        <ChartPanel title="Ventas por zona" data={byZoneChart} chartType={chartType} />
+      </div>
 
       {/* Acordeon por regional */}
+      <p className="text-sm font-semibold text-slate-300 px-1">Detalle por regional</p>
       <div className="space-y-3">
         {regionals.map((regional, ridx) => {
           const sales = byRegional[regional];
@@ -265,51 +443,38 @@ export default function SalesPage() {
           const pct = (sales.length / maxRegionalSales) * 100;
 
           return (
-            <motion.div
-              key={regional}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: ridx * 0.05 }}
-              className="glass-card overflow-hidden"
-            >
-              {/* Header regional */}
-              <button
-                onClick={() => toggleRegional(regional)}
-                className="w-full flex items-center gap-4 px-5 py-4 hover:bg-white/5 transition-colors"
-              >
+            <motion.div key={regional}
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: ridx * 0.04 }}
+              className="glass-card overflow-hidden">
+              <button onClick={() => toggleRegional(regional)}
+                className="w-full flex items-center gap-4 px-5 py-4 hover:bg-white/5 transition-colors">
                 <motion.span
                   animate={{ rotate: isOpen ? 90 : 0 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-                  className="text-cyan text-lg"
-                >
-                  ▶
+                  className="text-cyan">
+                  &#9654;
                 </motion.span>
                 <div className="flex-1 text-left">
                   <p className="font-semibold text-white">{regional}</p>
                   <div className="mt-1">
-                    <ChartBar pct={pct} color={chartType === 'Cilindro' ? '#6ef2c8' : '#23c7d9'} />
+                    <ChartBar pct={pct} color={semaphoreColor(pct)} />
                   </div>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-cyan">{sales.length} ventas</p>
                   <p className="text-xs text-slate-400">{money(nominal)}</p>
                 </div>
-                <span className={`ml-2 text-lg transition-transform ${isOpen ? 'rotate-180' : ''}`}>
-                  ⌄
-                </span>
+                <span className="ml-2 text-slate-400">{isOpen ? '▲' : '▼'}</span>
               </button>
 
-              {/* Tabla desplegable */}
               <AnimatePresence initial={false}>
                 {isOpen && (
-                  <motion.div
-                    key="content"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
+                  <motion.div key="content"
+                    initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
-                    className="overflow-hidden"
-                  >
+                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                    className="overflow-hidden">
                     <div className="border-t border-white/10 overflow-x-auto max-h-[400px]">
                       <table className="min-w-full text-xs">
                         <thead className="sticky top-0 bg-slate-900/90 backdrop-blur">
@@ -318,20 +483,17 @@ export default function SalesPage() {
                             <th className="px-4 py-2.5">Asesor</th>
                             <th className="px-4 py-2.5">Zona</th>
                             <th className="px-4 py-2.5">Plan</th>
-                            <th className="px-4 py-2.5">Status</th>
+                            <th className="px-4 py-2.5">Estado</th>
                             <th className="px-4 py-2.5">Nominal</th>
                             <th className="px-4 py-2.5">Aprobado</th>
                           </tr>
                         </thead>
                         <tbody>
                           {sales.map((row, i) => (
-                            <motion.tr
-                              key={row.id}
-                              initial={{ opacity: 0, x: -6 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: i * 0.008 }}
-                              className="border-t border-slate-800/60 hover:bg-slate-800/40"
-                            >
+                            <motion.tr key={row.id}
+                              initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.006 }}
+                              className="border-t border-slate-800/60 hover:bg-slate-800/40">
                               <td className="px-4 py-2">{row.sale_date}</td>
                               <td className="px-4 py-2">{row.advisor_name}</td>
                               <td className="px-4 py-2">{row.zone_name}</td>

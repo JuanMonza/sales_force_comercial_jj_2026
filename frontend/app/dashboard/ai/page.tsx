@@ -18,6 +18,14 @@ function semaphoreClass(v: number | null | undefined): string {
 function semaphoreEmoji(_v: number | null | undefined): string {
   return '';
 }
+function semaphoreCardClass(v: number | null | undefined): string {
+  if (v === null || v === undefined) return 'border-slate-700/60 bg-transparent';
+  if (v >= 100) return 'border-cyan-500/40 bg-cyan-500/5';
+  if (v >= 80)  return 'border-green-500/40 bg-green-500/5';
+  if (v >= 60)  return 'border-yellow-500/40 bg-yellow-500/5';
+  if (v >= 40)  return 'border-orange-500/40 bg-orange-500/5';
+  return 'border-rose-500/60 bg-rose-500/10';
+}
 
 type Forecast = {
   month: string;
@@ -253,7 +261,7 @@ export default function AiPage() {
             {(recommendations?.advisorActions ?? [])
               .slice((recPage - 1) * REC_PAGE_SIZE, recPage * REC_PAGE_SIZE)
               .map((row, idx) => (
-              <div key={`${row.advisorName}-${idx}`} className="rounded-xl border border-slate-700/60 p-3 hover:bg-slate-800/40 transition-colors">
+              <div key={`${row.advisorName}-${idx}`} className={`rounded-xl border p-3 transition-colors ${semaphoreCardClass(row.porcentajeCumplimiento)}`}>
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <p className="font-medium text-sm">{row.advisorName}</p>
                   <div className="flex items-center gap-2">
