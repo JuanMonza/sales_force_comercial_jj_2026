@@ -181,21 +181,21 @@ function pct(v: number | null | undefined) {
 /** Semáforo: devuelve clases Tailwind según % de cumplimiento */
 function semaphoreClass(v: number | null | undefined): string {
   if (v === null || v === undefined) return 'text-slate-400';
-  if (v >= 100) return 'font-bold text-cyan-400';     // 🔵 Sobre-cumplimiento
-  if (v >= 80)  return 'font-bold text-green-400';   // 🟢 Cumplido
-  if (v >= 60)  return 'font-bold text-yellow-400';  // 🟡 Medio
-  if (v >= 40)  return 'font-bold text-orange-400';  // 🟠 Bajo
-  return 'font-bold text-rose-400';                   // 🔴 Crítico
+  if (v >= 100) return 'font-bold text-cyan-400';     // Sobre-cumplimiento
+  if (v >= 80)  return 'font-bold text-green-400';   // Cumplido
+  if (v >= 60)  return 'font-bold text-yellow-400';  // Medio
+  if (v >= 40)  return 'font-bold text-orange-400';  // Bajo
+  return 'font-bold text-rose-400';                   // Critico
 }
 
-/** Emoji del semáforo */
+/** Indicador del semáforo */
 function semaphoreEmoji(v: number | null | undefined): string {
   if (v === null || v === undefined) return '-';
-  if (v >= 100) return '🔵';
-  if (v >= 80)  return '🟢';
-  if (v >= 60)  return '🟡';
-  if (v >= 40)  return '🟠';
-  return '🔴';
+  if (v >= 100) return '[MAX]';
+  if (v >= 80)  return '[OK]';
+  if (v >= 60)  return '[MED]';
+  if (v >= 40)  return '[BAJ]';
+  return '[CRIT]';
 }
 
 function buildQuery(filters: DashboardFilters) {

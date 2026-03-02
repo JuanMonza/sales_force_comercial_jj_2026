@@ -11,14 +11,14 @@ type SidebarProps = {
 };
 
 const items = [
-  { href: '/dashboard', label: 'Resumen', icon: '📊' },
-  { href: '/dashboard/director', label: 'Panel Director', icon: '🧭' },
-  { href: '/dashboard/coordinador', label: 'Panel Coordinador', icon: '🧩' },
-  { href: '/dashboard/sales', label: 'Ventas', icon: '💰' },
-  { href: '/dashboard/operations', label: 'Operaciones', icon: '⚙️' },
-  { href: '/dashboard/ai', label: 'IA Comercial', icon: '🤖' },
-  { href: '/dashboard/users', label: 'Usuarios', icon: '👥' },
-  { href: '/dashboard/admin', label: 'Catálogos', icon: '📋' },
+  { href: '/dashboard', label: 'Resumen', icon: '[~]' },
+  { href: '/dashboard/director', label: 'Panel Director', icon: '[D]' },
+  { href: '/dashboard/coordinador', label: 'Panel Coordinador', icon: '[C]' },
+  { href: '/dashboard/sales', label: 'Ventas', icon: '[$]' },
+  { href: '/dashboard/operations', label: 'Operaciones', icon: '[O]' },
+  { href: '/dashboard/ai', label: 'IA Comercial', icon: '[IA]' },
+  { href: '/dashboard/users', label: 'Usuarios', icon: '[U]' },
+  { href: '/dashboard/admin', label: 'Catalogos', icon: '[A]' },
 ];
 
 export function Sidebar({ user }: SidebarProps) {

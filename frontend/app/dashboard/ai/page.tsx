@@ -17,9 +17,11 @@ function semaphoreClass(v: number | null | undefined): string {
 }
 function semaphoreEmoji(v: number | null | undefined): string {
   if (v === null || v === undefined) return '';
-  if (v >= 100) return '🔵'; if (v >= 80) return '🟢';
-  if (v >= 60)  return '🟡'; if (v >= 40) return '🟠';
-  return '🔴';
+  if (v >= 100) return '[MAX]';
+  if (v >= 80)  return '[OK]';
+  if (v >= 60)  return '[MED]';
+  if (v >= 40)  return '[BAJ]';
+  return '[CRIT]';
 }
 
 type Forecast = {
@@ -200,7 +202,7 @@ export default function AiPage() {
         <div className="glass-card p-4">
           <p className="text-xs text-slate-400 uppercase tracking-[0.12em]">Tendencia</p>
           <p className="text-2xl font-semibold mt-1">
-            {forecast?.trend === 'UP' ? '📈' : forecast?.trend === 'DOWN' ? '📉' : '➡️'} {forecast?.trend ?? '-'}
+            {forecast?.trend === 'UP' ? '▲' : forecast?.trend === 'DOWN' ? '▼' : '—'} {forecast?.trend ?? '-'}
           </p>
           <p className="text-xs text-slate-400 mt-2">
             Vs mes anterior: {forecast?.variationVsPreviousMonthPct?.toFixed(2) ?? '-'}%
@@ -286,7 +288,7 @@ export default function AiPage() {
                   />
                 </div>
                 <p className="text-xs text-slate-300 mt-1.5">{row.reason}</p>
-                <p className="text-xs text-slate-400 mt-1">📍 {row.zona} · {row.regional}</p>
+                <p className="text-xs text-slate-400 mt-1">{row.zona} · {row.regional}</p>
                 <p className="text-xs mt-1.5 text-white/80">→ {row.action}</p>
               </div>
             ))}

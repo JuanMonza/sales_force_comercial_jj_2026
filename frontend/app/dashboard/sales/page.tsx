@@ -130,7 +130,7 @@ export default function SalesPage() {
                   : 'text-slate-400 hover:text-white hover:bg-slate-700'
               }`}
             >
-              {type === 'Barras' ? '📊 Barras' : type === 'Cilindro' ? '🟢 Cilindros' : '🕯 Velas'}
+              {type === 'Barras' ? 'Barras' : type === 'Cilindro' ? 'Cilindros' : 'Velas'}
             </button>
           ))}
         </div>
