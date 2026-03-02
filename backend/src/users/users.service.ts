@@ -17,7 +17,9 @@ type UserViewRow = {
   role: Role;
   regional_id: string | null;
   coordinator_zone_id: string | null;
+  coordinator_zone_name: string | null;
   advisor_zone_id: string | null;
+  advisor_zone_name: string | null;
   category: string | null;
 };
 
@@ -70,12 +72,37 @@ export class UsersService {
     }
 
     if (dto.role === Role.ASESOR) {
-      if (!dto.zoneId) {
-        throw new BadRequestException('zoneId es requerido para asesor');
+      let advisorZoneId = dto.zoneId;
+
+      if (dto.coordinatorId) {
+        const coordinatorScope = await this.db.query<{ zone_id: string }>(
+          `
+            SELECT cp.zone_id
+            FROM coordinator_profiles cp
+            JOIN users u ON u.id = cp.user_id
+            JOIN roles r ON r.id = u.role_id
+            WHERE u.tenant_id = $1
+              AND u.id = $2
+              AND r.role_key = 'COORDINADOR'
+              AND u.deleted_at IS NULL
+            LIMIT 1
+          `,
+          [actor.tenantId, dto.coordinatorId]
+        );
+
+        advisorZoneId = coordinatorScope.rows[0]?.zone_id;
+        if (!advisorZoneId) {
+          throw new BadRequestException('coordinatorId invalido para este tenant');
+        }
       }
+
+      if (!advisorZoneId) {
+        throw new BadRequestException('zoneId o coordinatorId es requerido para asesor');
+      }
+
       await this.db.query(
         'INSERT INTO advisor_profiles (user_id, zone_id, category) VALUES ($1, $2, $3)',
-        [userId, dto.zoneId, dto.category ?? 'GENERAL']
+        [userId, advisorZoneId, dto.category ?? 'GENERAL']
       );
     }
 
@@ -95,13 +122,17 @@ export class UsersService {
         r.role_key AS role,
         dp.regional_id,
         cp.zone_id AS coordinator_zone_id,
+        cz.name AS coordinator_zone_name,
         ap.zone_id AS advisor_zone_id,
+        az.name AS advisor_zone_name,
         ap.category
       FROM users u
       JOIN roles r ON r.id = u.role_id
       LEFT JOIN director_profiles dp ON dp.user_id = u.id
       LEFT JOIN coordinator_profiles cp ON cp.user_id = u.id
+      LEFT JOIN zones cz ON cz.id = cp.zone_id
       LEFT JOIN advisor_profiles ap ON ap.user_id = u.id
+      LEFT JOIN zones az ON az.id = ap.zone_id
       WHERE u.tenant_id = $1
         AND u.deleted_at IS NULL
       ORDER BY u.created_at DESC
@@ -125,13 +156,17 @@ export class UsersService {
         r.role_key AS role,
         dp.regional_id,
         cp.zone_id AS coordinator_zone_id,
+        cz.name AS coordinator_zone_name,
         ap.zone_id AS advisor_zone_id,
+        az.name AS advisor_zone_name,
         ap.category
       FROM users u
       JOIN roles r ON r.id = u.role_id
       LEFT JOIN director_profiles dp ON dp.user_id = u.id
       LEFT JOIN coordinator_profiles cp ON cp.user_id = u.id
+      LEFT JOIN zones cz ON cz.id = cp.zone_id
       LEFT JOIN advisor_profiles ap ON ap.user_id = u.id
+      LEFT JOIN zones az ON az.id = ap.zone_id
       WHERE u.tenant_id = $1
         AND u.id = $2
         AND u.deleted_at IS NULL

@@ -32,6 +32,9 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
+  coordinatorId?: string;
+
+  @IsOptional()
+  @IsString()
   category?: string;
 }
-

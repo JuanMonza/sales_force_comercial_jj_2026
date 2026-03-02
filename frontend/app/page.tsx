@@ -52,7 +52,7 @@ export default function LoginPage() {
           <div>
             <label className="block text-sm text-slate-300 mb-1">Correo</label>
             <input
-              className="w-full rounded-xl bg-slate-900/60 border border-cyan/20 px-4 py-2 outline-none focus:border-cyan"
+              className="w-full rounded-xl bg-white border border-slate-300 px-4 py-2 text-black font-medium placeholder:text-slate-500 outline-none focus:border-cyan"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
@@ -62,7 +62,7 @@ export default function LoginPage() {
           <div>
             <label className="block text-sm text-slate-300 mb-1">Contrasena</label>
             <input
-              className="w-full rounded-xl bg-slate-900/60 border border-cyan/20 px-4 py-2 outline-none focus:border-cyan"
+              className="w-full rounded-xl bg-white border border-slate-300 px-4 py-2 text-black font-medium placeholder:text-slate-500 outline-none focus:border-cyan"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               type="password"
@@ -82,4 +82,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

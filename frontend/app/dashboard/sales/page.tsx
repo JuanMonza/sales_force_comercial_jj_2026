@@ -54,7 +54,7 @@ export default function SalesPage() {
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="w-full rounded-lg bg-slate-900/65 border border-cyan/20 px-3 py-2"
+            className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-black font-medium"
           />
         </div>
         <div>
@@ -63,7 +63,7 @@ export default function SalesPage() {
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="w-full rounded-lg bg-slate-900/65 border border-cyan/20 px-3 py-2"
+            className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-black font-medium"
           />
         </div>
         <button type="submit" className="rounded-lg bg-cyan text-ink font-semibold px-4 py-2 hover:brightness-110">
@@ -88,4 +88,3 @@ export default function SalesPage() {
     </div>
   );
 }
-
