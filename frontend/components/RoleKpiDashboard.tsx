@@ -188,14 +188,9 @@ function semaphoreClass(v: number | null | undefined): string {
   return 'font-bold text-rose-400';                   // Critico
 }
 
-/** Indicador del semáforo */
-function semaphoreEmoji(v: number | null | undefined): string {
-  if (v === null || v === undefined) return '-';
-  if (v >= 100) return '[MAX]';
-  if (v >= 80)  return '[OK]';
-  if (v >= 60)  return '[MED]';
-  if (v >= 40)  return '[BAJ]';
-  return '[CRIT]';
+/** Indicador del semáforo: vacio — el color lo da semaphoreClass */
+function semaphoreEmoji(_v: number | null | undefined): string {
+  return '';
 }
 
 function buildQuery(filters: DashboardFilters) {

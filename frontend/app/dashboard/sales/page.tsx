@@ -1,6 +1,10 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import {
+  Area, AreaChart, Bar, BarChart,
+  CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis
+} from 'recharts';
 import { AnimatePresence, motion } from 'framer-motion';
 import { apiFetch } from '@/lib/api';
 import { getToken } from '@/lib/auth';
@@ -196,7 +200,63 @@ export default function SalesPage() {
         </div>
       </div>
 
-      {/* Acordeón por regional */}
+      {/* Grafico resumen por regional */}
+      {regionals.length > 0 && (() => {
+        const chartData = regionals.map((r) => ({
+          name: r.length > 14 ? r.slice(0, 13) + '.' : r,
+          ventas: byRegional[r].length,
+          nominal: Math.round(byRegional[r].reduce((s, x) => s + Number(x.sale_amount), 0)),
+        }));
+        const COLORS = ['#23c7d9','#6ef2c8','#ffb142','#ff6b81','#748ffc','#80ed99','#a29bfe','#fd79a8'];
+        return (
+          <div className="glass-card p-4">
+            <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Ventas por regional — {chartType}</p>
+            <ResponsiveContainer width="100%" height={220}>
+              {chartType === 'Velas' ? (
+                <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#23c7d9" stopOpacity={0.45} />
+                      <stop offset="95%" stopColor="#23c7d9" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
+                    labelStyle={{ color: '#e2e8f0' }}
+                    formatter={(v: number) => [v, 'Ventas']}
+                  />
+                  <Area type="monotone" dataKey="ventas" stroke="#23c7d9" strokeWidth={2} fill="url(#areaGrad)" />
+                </AreaChart>
+              ) : (
+                <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
+                    labelStyle={{ color: '#e2e8f0' }}
+                    formatter={(v: number) => [v, 'Ventas']}
+                  />
+                  <Bar
+                    dataKey="ventas"
+                    radius={chartType === 'Cilindro' ? [10, 10, 0, 0] : [3, 3, 0, 0]}
+                    maxBarSize={chartType === 'Cilindro' ? 28 : 48}
+                  >
+                    {chartData.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              )}
+            </ResponsiveContainer>
+          </div>
+        );
+      })()}
+
+      {/* Acordeon por regional */}
       <div className="space-y-3">
         {regionals.map((regional, ridx) => {
           const sales = byRegional[regional];
