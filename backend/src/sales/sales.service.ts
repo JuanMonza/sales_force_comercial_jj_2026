@@ -229,6 +229,7 @@ export class SalesService {
         s.note,
         s.advisor_id,
         (ua.first_name || ' ' || ua.last_name) AS advisor_name,
+        ua.document_id AS advisor_document,
         s.coordinator_id,
         (uc.first_name || ' ' || uc.last_name) AS coordinator_name,
         s.director_id,

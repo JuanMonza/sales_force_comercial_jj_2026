@@ -14,6 +14,7 @@ type SaleRow = {
   id: string;
   sale_date: string;
   advisor_name: string;
+  advisor_document?: string;
   regional_name: string;
   zone_name: string;
   plan_name: string | null;
@@ -195,7 +196,7 @@ export default function SalesPage() {
       const query = new URLSearchParams();
       if (params?.startDate) query.set('startDate', params.startDate);
       if (params?.endDate) query.set('endDate', params.endDate);
-      query.set('limit', '2000');
+      query.set('limit', '2000'); // backend soporta hasta 5000
       const data = await apiFetch<SaleRow[]>(`/sales?${query.toString()}`, { token });
       setRows(data);
       const regions: Record<string, boolean> = {};
@@ -480,8 +481,7 @@ export default function SalesPage() {
                         <thead className="sticky top-0 bg-slate-900/90 backdrop-blur">
                           <tr className="text-left text-slate-300">
                             <th className="px-4 py-2.5">Fecha</th>
-                            <th className="px-4 py-2.5">Asesor</th>
-                            <th className="px-4 py-2.5">Zona</th>
+                            <th className="px-4 py-2.5">Asesor</th>                            <th className="px-4 py-2.5">Cedula</th>                            <th className="px-4 py-2.5">Zona</th>
                             <th className="px-4 py-2.5">Plan</th>
                             <th className="px-4 py-2.5">Estado</th>
                             <th className="px-4 py-2.5">Nominal</th>
@@ -496,6 +496,7 @@ export default function SalesPage() {
                               className="border-t border-slate-800/60 hover:bg-slate-800/40">
                               <td className="px-4 py-2">{row.sale_date}</td>
                               <td className="px-4 py-2">{row.advisor_name}</td>
+                              <td className="px-4 py-2 text-slate-400">{row.advisor_document || '-'}</td>
                               <td className="px-4 py-2">{row.zone_name}</td>
                               <td className="px-4 py-2">{row.plan_name || '-'}</td>
                               <td className="px-4 py-2">{row.status_name || '-'}</td>

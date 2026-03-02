@@ -18,6 +18,19 @@ function semaphoreClass(v: number | null | undefined): string {
 function semaphoreEmoji(_v: number | null | undefined): string {
   return '';
 }
+function semaphoreLabel(v: number | null | undefined): string {
+  if (v === null || v === undefined) return '';
+  if (v >= 100) return 'Sobre meta';
+  if (v >= 80)  return 'En meta';
+  if (v >= 60)  return 'Medio';
+  if (v >= 40)  return 'Bajo';
+  return 'Critico';
+}
+function priorityLabel(p: string): string {
+  if (p === 'ALTA')  return 'Alerta';
+  if (p === 'MEDIA') return 'Seguimiento';
+  return 'Al dia';
+}
 function semaphoreCardClass(v: number | null | undefined): string {
   if (v === null || v === undefined) return 'border-slate-700/60 bg-transparent';
   if (v >= 100) return 'border-cyan-500/40 bg-cyan-500/5';
@@ -266,7 +279,7 @@ export default function AiPage() {
                   <p className="font-medium text-sm">{row.advisorName}</p>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs font-bold ${semaphoreClass(row.porcentajeCumplimiento)}`}>
-                      {semaphoreEmoji(row.porcentajeCumplimiento)} {row.porcentajeCumplimiento.toFixed(1)}%
+                      {row.porcentajeCumplimiento.toFixed(1)}% <span className="font-normal opacity-80">{semaphoreLabel(row.porcentajeCumplimiento)}</span>
                     </span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${
                       row.priority === 'ALTA'
@@ -275,7 +288,7 @@ export default function AiPage() {
                           ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                           : 'bg-green-500/20 text-green-300 border-green-500/30'
                     }`}>
-                      {row.priority}
+                      {priorityLabel(row.priority)}
                     </span>
                   </div>
                 </div>
