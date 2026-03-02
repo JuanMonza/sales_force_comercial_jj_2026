@@ -3,6 +3,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -151,6 +153,7 @@ type DashboardFilters = {
   serviceId: string;
   startDate: string;
   endDate: string;
+  month: string;
 };
 
 const initialFilters: DashboardFilters = {
@@ -164,7 +167,8 @@ const initialFilters: DashboardFilters = {
   planId: '',
   serviceId: '',
   startDate: '',
-  endDate: ''
+  endDate: '',
+  month: ''
 };
 
 const PIE_COLORS = ['#23c7d9', '#6ef2c8', '#ffb142', '#ff6b81', '#748ffc', '#80ed99'];
@@ -440,6 +444,13 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
           ))}
         </select>
         <input
+          type="month"
+          value={filters.month}
+          onChange={(e) => setFilters((p) => ({ ...p, month: e.target.value }))}
+          className="rounded-lg bg-white border border-slate-300 px-3 py-2 text-black"
+          placeholder="Mes (YYYY-MM)"
+        />
+        <input
           type="date"
           value={filters.startDate}
           onChange={(e) => setFilters((p) => ({ ...p, startDate: e.target.value }))}
@@ -467,11 +478,11 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
       {/* Leyenda semáforo */}
       <div className="glass-card px-4 py-2 flex flex-wrap gap-4 text-xs text-slate-300">
         <span className="font-semibold text-slate-400 uppercase tracking-wide">Semáforo:</span>
-        <span className="text-rose-400 font-bold">🔴 Crítico (&lt;40%)</span>
-        <span className="text-orange-400 font-bold">🟠 Bajo (40–59%)</span>
-        <span className="text-yellow-400 font-bold">🟡 Medio (60–79%)</span>
-        <span className="text-green-400 font-bold">🟢 Cumplido (80–99%)</span>
-        <span className="text-cyan-400 font-bold">🔵 Sobre-cumplimiento (≥100%)</span>
+        <span className="text-rose-400 font-bold">Critico (&lt;40%)</span>
+        <span className="text-orange-400 font-bold">Bajo (40–59%)</span>
+        <span className="text-yellow-400 font-bold">Medio (60–79%)</span>
+        <span className="text-green-400 font-bold">Cumplido (80–99%)</span>
+        <span className="text-cyan-400 font-bold">Sobre meta (≥100%)</span>
       </div>
 
       <motion.section
@@ -537,18 +548,44 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
         transition={{ duration: 0.4 }}
         className="glass-card p-4"
       >
-        <h2 className="text-lg font-semibold mb-3">Tendencia temporal y picos de actividad</h2>
+        <h2 className="text-lg font-semibold mb-1">Tendencia comparativa mes actual vs anterior</h2>
+        <p className="text-xs text-slate-400 mb-3">
+          <span className="inline-block w-3 h-3 rounded-full bg-cyan-400 mr-1 align-middle" />Mes actual
+          &nbsp;&nbsp;
+          <span className="inline-block w-3 h-3 rounded-full bg-violet-400 mr-1 align-middle" />Mes anterior
+        </p>
         <div className="h-72">
           <ResponsiveContainer>
-            <LineChart data={trendComparative}>
+            <AreaChart data={trendComparative} margin={{ top: 4, right: 16, bottom: 0, left: 8 }}>
+              <defs>
+                <linearGradient id="gradRoleCurr" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#23c7d9" stopOpacity={0.45} />
+                  <stop offset="95%" stopColor="#23c7d9" stopOpacity={0.02} />
+                </linearGradient>
+                <linearGradient id="gradRolePrev" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#a29bfe" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#a29bfe" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="dia" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="mesActual" stroke="#23c7d9" strokeWidth={3} />
-              <Line type="monotone" dataKey="mesAnterior" stroke="#ffb142" strokeWidth={3} />
-            </LineChart>
+              <XAxis dataKey="dia" stroke="#9eb0d1" />
+              <YAxis stroke="#9eb0d1" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+              <Tooltip
+                formatter={(value: number, name: string) => [
+                  `$${Number(value).toLocaleString('es-CO')}`,
+                  name === 'mesActual' ? 'Mes actual' : 'Mes anterior'
+                ]}
+                contentStyle={{
+                  background: 'rgba(12,16,25,0.92)',
+                  border: '1px solid rgba(35,199,217,0.35)',
+                  borderRadius: 10,
+                  fontSize: 12
+                }}
+              />
+              <Legend formatter={(value) => (value === 'mesActual' ? 'Mes actual' : 'Mes anterior')} />
+              <Area type="monotone" dataKey="mesActual" stroke="#23c7d9" strokeWidth={2.5} fill="url(#gradRoleCurr)" dot={{ r: 3, strokeWidth: 0, fill: '#23c7d9' }} activeDot={{ r: 5 }} />
+              <Area type="monotone" dataKey="mesAnterior" stroke="#a29bfe" strokeWidth={2.5} fill="url(#gradRolePrev)" dot={{ r: 3, strokeWidth: 0, fill: '#a29bfe' }} activeDot={{ r: 5 }} />
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       </motion.section>

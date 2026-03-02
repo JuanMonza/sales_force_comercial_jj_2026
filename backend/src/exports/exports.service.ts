@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import ExcelJS from 'exceljs';
-import PDFDocument from 'pdfkit';
+import type * as ExcelJSTypes from 'exceljs';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const ExcelJS = require('exceljs') as typeof ExcelJSTypes;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const PDFDocument = require('pdfkit');
 import { RequestUser } from '../common/interfaces/request-user.interface';
 import { KpiService } from '../kpi/kpi.service';
 import { QueryKpiDto } from '../kpi/dto/query-kpi.dto';
@@ -20,7 +23,7 @@ export class ExportsService {
     return `${Number(value).toFixed(2)}%`;
   }
 
-  private addJsonRowsSheet(workbook: ExcelJS.Workbook, title: string, rows: Record<string, unknown>[]) {
+  private addJsonRowsSheet(workbook: ExcelJSTypes.Workbook, title: string, rows: Record<string, unknown>[]) {
     const sheet = workbook.addWorksheet(title);
     if (!rows.length) {
       sheet.addRow(['Sin datos']);

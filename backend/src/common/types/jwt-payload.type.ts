@@ -5,6 +5,8 @@ export interface JwtPayload {
   tenantId: string;
   email: string;
   role: Role;
+  firstName?: string | null;
+  lastName?: string | null;
   regionalId?: string | null;
   zoneId?: string | null;
 }

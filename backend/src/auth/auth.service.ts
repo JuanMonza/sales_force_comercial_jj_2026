@@ -11,6 +11,8 @@ type LoginUserRow = {
   id: string;
   tenant_id: string;
   email: string;
+  first_name: string | null;
+  last_name: string | null;
   password_hash: string;
   is_active: boolean;
   role_key: Role;
@@ -65,6 +67,8 @@ export class AuthService {
           u.id,
           u.tenant_id,
           u.email,
+          u.first_name,
+          u.last_name,
           u.password_hash,
           u.is_active,
           r.role_key,
@@ -103,6 +107,8 @@ export class AuthService {
       sub: user.id,
       tenantId: user.tenant_id,
       email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
       role: user.role_key,
       regionalId: scope.regionalId,
       zoneId: scope.zoneId
@@ -115,6 +121,8 @@ export class AuthService {
         id: user.id,
         tenantId: user.tenant_id,
         email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
         role: user.role_key,
         regionalId: scope.regionalId,
         zoneId: scope.zoneId

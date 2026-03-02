@@ -115,8 +115,11 @@ export function Sidebar({ user }: SidebarProps) {
               >
                 <p className="text-[10px] text-cyan/70 uppercase tracking-[0.2em] font-semibold">Fuerza Comercial</p>
                 <p className="text-base font-bold text-white mt-1 truncate">
-                  {user.email}
+                  {user.firstName && user.lastName
+                    ? `${user.firstName} ${user.lastName}`
+                    : user.email}
                 </p>
+                <p className="text-[10px] text-slate-400 truncate mt-0.5">{user.email}</p>
                 <span className="inline-block mt-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full
                   bg-cyan/15 text-cyan border border-cyan/30 tracking-wide">
                   {user.role}

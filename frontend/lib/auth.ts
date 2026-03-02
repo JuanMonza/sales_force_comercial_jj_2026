@@ -2,6 +2,8 @@ export type AppUser = {
   id: string;
   tenantId: string;
   email: string;
+  firstName?: string | null;
+  lastName?: string | null;
   role: 'ADMINISTRADOR' | 'DIRECTOR' | 'COORDINADOR' | 'ASESOR';
   regionalId?: string | null;
   zoneId?: string | null;

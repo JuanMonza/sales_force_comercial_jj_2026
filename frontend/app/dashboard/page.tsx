@@ -32,42 +32,57 @@ type ComplianceRow = {
   nosFalta: number;
 };
 
+type DailySaleRow = { fecha_diligenciamiento: string; nominal: string | number };
+
+function semaphoreClass(v: number): string {
+  if (v >= 100) return 'text-cyan-400';
+  if (v >= 80)  return 'text-green-400';
+  if (v >= 60)  return 'text-yellow-400';
+  if (v >= 40)  return 'text-orange-400';
+  return 'text-rose-400';
+}
+
+function semaphoreLabel(v: number): string {
+  if (v >= 100) return 'Sobre meta';
+  if (v >= 80)  return 'En meta';
+  if (v >= 60)  return 'Medio';
+  if (v >= 40)  return 'Bajo';
+  return 'Critico';
+}
+
 export default function DashboardHomePage() {
   const router = useRouter();
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const [month, setMonth] = useState(thisMonth);
+  const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [reporting, setReporting] = useState<ReportingTracking | null>(null);
-  const [dailySales, setDailySales] = useState<any[]>([]);
+  const [dailySales, setDailySales] = useState<DailySaleRow[]>([]);
   const [compliance, setCompliance] = useState<ComplianceRow[]>([]);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const loadData = async (selectedMonth: string) => {
     const token = getToken();
     const user = getUser();
     if (!token || !user) return;
+    if (user.role === 'DIRECTOR') { router.replace('/dashboard/director'); return; }
+    if (user.role === 'COORDINADOR') { router.replace('/dashboard/coordinador'); return; }
+    setLoading(true); setError('');
+    const q = selectedMonth ? `?month=${selectedMonth}` : '';
+    try {
+      const [summaryRes, reportingRes, dailySalesRes, complianceRes] = await Promise.all([
+        apiFetch<SummaryResponse>(`/kpis/summary${q}`, { token }),
+        apiFetch<ReportingTracking>('/kpis/reporting-tracking', { token }),
+        apiFetch<DailySaleRow[]>(`/kpis/daily-sales${q}`, { token }),
+        apiFetch<ComplianceRow[]>(`/kpis/advisor-compliance/current${q}`, { token })
+      ]);
+      setSummary(summaryRes); setReporting(reportingRes);
+      setDailySales(dailySalesRes); setCompliance(complianceRes);
+    } catch (err: any) { setError(err.message || 'No fue posible cargar KPIs'); }
+    finally { setLoading(false); }
+  };
 
-    if (user.role === 'DIRECTOR') {
-      router.replace('/dashboard/director');
-      return;
-    }
-    if (user.role === 'COORDINADOR') {
-      router.replace('/dashboard/coordinador');
-      return;
-    }
-
-    Promise.all([
-      apiFetch<SummaryResponse>('/kpis/summary', { token }),
-      apiFetch<ReportingTracking>('/kpis/reporting-tracking', { token }),
-      apiFetch<any[]>('/kpis/daily-sales', { token }),
-      apiFetch<ComplianceRow[]>('/kpis/advisor-compliance/current', { token })
-    ])
-      .then(([summaryRes, reportingRes, dailySalesRes, complianceRes]) => {
-        setSummary(summaryRes);
-        setReporting(reportingRes);
-        setDailySales(dailySalesRes);
-        setCompliance(complianceRes);
-      })
-      .catch((err: any) => setError(err.message || 'No fue posible cargar KPIs'));
-  }, [router]);
+  useEffect(() => { loadData(month); }, []);
 
   const topRisk = useMemo(
     () => [...compliance].sort((a, b) => a.porcentajeCumplimiento - b.porcentajeCumplimiento).slice(0, 8),
@@ -80,13 +95,26 @@ export default function DashboardHomePage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45 }}
-        className="glass-card p-5"
+        className="glass-card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
       >
-        <p className="text-xs uppercase tracking-[0.15em] text-slate-400">Panel ejecutivo</p>
-        <h1 className="text-3xl font-semibold mt-1">Vista general comercial</h1>
-        <p className="text-slate-300 text-sm mt-2">
-          Monitoreo de mes actual vs anterior, seguimiento de reportes y asesores en riesgo.
-        </p>
+        <div>
+          <p className="text-xs uppercase tracking-[0.15em] text-slate-400">Panel ejecutivo</p>
+          <h1 className="text-3xl font-semibold mt-1">Vista general comercial</h1>
+          <p className="text-slate-300 text-sm mt-2">
+            Monitoreo de mes actual vs anterior, seguimiento de reportes y asesores en riesgo.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <label className="text-xs text-slate-400 whitespace-nowrap">Mes a visualizar</label>
+          <input
+            type="month"
+            value={month}
+            max={thisMonth}
+            onChange={(e) => { setMonth(e.target.value); loadData(e.target.value); }}
+            className="rounded-lg bg-white border border-slate-300 px-3 py-2 text-black font-medium text-sm"
+          />
+          {loading && <span className="text-xs text-cyan-400 animate-pulse">Cargando...</span>}
+        </div>
       </motion.header>
 
       {error ? <p className="text-rose text-sm">{error}</p> : null}
@@ -115,9 +143,10 @@ export default function DashboardHomePage() {
       </section>
 
       <section className="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-4">
-        <SalesTrendChart data={dailySales} />
+        <SalesTrendChart data={dailySales} month={month} />
         <div className="glass-card p-4">
-          <h2 className="text-lg font-semibold mb-3">Asesores en riesgo</h2>
+          <h2 className="text-lg font-semibold mb-1">Asesores en riesgo</h2>
+          <p className="text-xs text-slate-400 mb-3">Menor cumplimiento de presupuesto — {month}</p>
           <div className="space-y-2">
             {topRisk.map((advisor) => (
               <div
@@ -128,7 +157,12 @@ export default function DashboardHomePage() {
                   <p className="font-medium">{advisor.nombreAsesor}</p>
                   <p className="text-xs text-slate-300">Falta: ${advisor.nosFalta.toLocaleString('es-CO')}</p>
                 </div>
-                <span className="text-rose font-semibold">{advisor.porcentajeCumplimiento}%</span>
+                <div className="text-right">
+                  <p className={`font-bold text-sm ${semaphoreClass(advisor.porcentajeCumplimiento)}`}>
+                    {advisor.porcentajeCumplimiento}%
+                  </p>
+                  <p className="text-[10px] text-slate-400">{semaphoreLabel(advisor.porcentajeCumplimiento)}</p>
+                </div>
               </div>
             ))}
             {topRisk.length === 0 ? <p className="text-sm text-slate-400">Sin datos de cumplimiento.</p> : null}
