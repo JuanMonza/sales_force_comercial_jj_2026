@@ -28,9 +28,11 @@ async function bootstrap() {
     })
   );
   app.use(compression());
+  const rawOrigin = configService.get<string>('CORS_ORIGIN', 'http://localhost:3000');
+  const allowedOrigins = rawOrigin === '*' ? '*' : rawOrigin.split(',').map((s) => s.trim());
   app.enableCors({
-    origin: configService.get<string>('CORS_ORIGIN', 'http://localhost:3000'),
-    credentials: true
+    origin: allowedOrigins,
+    credentials: allowedOrigins !== '*'
   });
 
   const port = Number(configService.get<string>('BACKEND_PORT', '4000'));

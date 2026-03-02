@@ -42,6 +42,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
       DEFAULT_TENANT_ID: ${DEFAULT_TENANT_ID}
       CORS_ORIGIN: ${CORS_ORIGIN}
+      APPSHEET_API_KEY: ${APPSHEET_API_KEY:-salesforce-appsheet-2026}
     depends_on:
       - postgres
       - redis

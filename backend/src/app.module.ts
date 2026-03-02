@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AiModule } from './ai/ai.module';
+import { AppsheetModule } from './appsheet/appsheet.module';
 import { AuthModule } from './auth/auth.module';
 import { CacheModule } from './cache/cache.module';
 import { DatabaseModule } from './database/database.module';
@@ -46,7 +47,8 @@ import { BusinessEditsModule } from './business-edits/business-edits.module';
     AuditModule,
     ObservabilityModule,
     BusinessEditsModule,
-    CatalogsModule
+    CatalogsModule,
+    AppsheetModule
   ],
   controllers: [HealthController],
   providers: [
