@@ -10,7 +10,7 @@ type SidebarProps = {
 
 const items = [
   { href: '/dashboard', label: 'Resumen' },
-  // { href: '/dashboard/director', label: 'Panel Director' },  // Rol Director — deshabilitado temporalmente
+  { href: '/dashboard/director', label: 'Panel Director' },
   { href: '/dashboard/coordinador', label: 'Panel Coordinador' },
   { href: '/dashboard/sales', label: 'Ventas' },
   { href: '/dashboard/operations', label: 'Operaciones' },
@@ -33,20 +33,19 @@ export function Sidebar({ user }: SidebarProps) {
         {items
           .filter((item) => {
             if (item.href === '/dashboard/users') return user.role === 'ADMINISTRADOR';
-            // if (item.href === '/dashboard/director') return user.role === 'DIRECTOR' || user.role === 'ADMINISTRADOR';
+            if (item.href === '/dashboard/director') return user.role === 'DIRECTOR' || user.role === 'ADMINISTRADOR';
             if (item.href === '/dashboard/coordinador') {
               return user.role === 'COORDINADOR' || user.role === 'ADMINISTRADOR';
             }
             // if (item.href === '/dashboard/saas') return user.role === 'ADMINISTRADOR';
             if (item.href === '/dashboard/admin') return user.role === 'ADMINISTRADOR';
             if (item.href === '/dashboard/operations') {
-              // return user.role === 'ADMINISTRADOR' || user.role === 'DIRECTOR' || user.role === 'COORDINADOR';
-              return user.role === 'ADMINISTRADOR' || user.role === 'COORDINADOR';
+              return user.role === 'ADMINISTRADOR' || user.role === 'DIRECTOR' || user.role === 'COORDINADOR';
             }
             if (item.href === '/dashboard/ai') {
               return (
                 user.role === 'ADMINISTRADOR' ||
-                // user.role === 'DIRECTOR' ||   // Director deshabilitado temporalmente
+                user.role === 'DIRECTOR' ||
                 user.role === 'COORDINADOR' ||
                 user.role === 'ASESOR'
               );

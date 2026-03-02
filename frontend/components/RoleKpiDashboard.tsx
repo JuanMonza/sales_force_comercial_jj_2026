@@ -178,6 +178,26 @@ function pct(v: number | null | undefined) {
   return `${Number(v).toFixed(2)}%`;
 }
 
+/** Semáforo: devuelve clases Tailwind según % de cumplimiento */
+function semaphoreClass(v: number | null | undefined): string {
+  if (v === null || v === undefined) return 'text-slate-400';
+  if (v >= 100) return 'font-bold text-cyan-400';     // 🔵 Sobre-cumplimiento
+  if (v >= 80)  return 'font-bold text-green-400';   // 🟢 Cumplido
+  if (v >= 60)  return 'font-bold text-yellow-400';  // 🟡 Medio
+  if (v >= 40)  return 'font-bold text-orange-400';  // 🟠 Bajo
+  return 'font-bold text-rose-400';                   // 🔴 Crítico
+}
+
+/** Emoji del semáforo */
+function semaphoreEmoji(v: number | null | undefined): string {
+  if (v === null || v === undefined) return '-';
+  if (v >= 100) return '🔵';
+  if (v >= 80)  return '🟢';
+  if (v >= 60)  return '🟡';
+  if (v >= 40)  return '🟠';
+  return '🔴';
+}
+
 function buildQuery(filters: DashboardFilters) {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
@@ -200,6 +220,7 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
   const [regionalPrevious, setRegionalPrevious] = useState<RegionalProgressRow[]>([]);
   const [dailySales, setDailySales] = useState<DailySalesRow[]>([]);
   const [tracking, setTracking] = useState<ReportingTracking | null>(null);
+  const [advisorNameFilter, setAdvisorNameFilter] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -432,11 +453,28 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
           onChange={(e) => setFilters((p) => ({ ...p, endDate: e.target.value }))}
           className="rounded-lg bg-white border border-slate-300 px-3 py-2 text-black"
         />
+        <input
+          type="text"
+          placeholder="Buscar nombre asesor..."
+          value={advisorNameFilter}
+          onChange={(e) => setAdvisorNameFilter(e.target.value)}
+          className="rounded-lg bg-white border border-slate-300 px-3 py-2 text-black col-span-2 xl:col-span-2"
+        />
         <button className="rounded-lg bg-cyan text-ink font-semibold px-4 py-2">Aplicar filtros</button>
       </motion.form>
 
       {error ? <p className="text-rose text-sm">{error}</p> : null}
       {loading ? <p className="text-slate-300 text-sm">Cargando dashboard...</p> : null}
+
+      {/* Leyenda semáforo */}
+      <div className="glass-card px-4 py-2 flex flex-wrap gap-4 text-xs text-slate-300">
+        <span className="font-semibold text-slate-400 uppercase tracking-wide">Semáforo:</span>
+        <span className="text-rose-400 font-bold">🔴 Crítico (&lt;40%)</span>
+        <span className="text-orange-400 font-bold">🟠 Bajo (40–59%)</span>
+        <span className="text-yellow-400 font-bold">🟡 Medio (60–79%)</span>
+        <span className="text-green-400 font-bold">🟢 Cumplido (80–99%)</span>
+        <span className="text-cyan-400 font-bold">🔵 Sobre-cumplimiento (≥100%)</span>
+      </div>
 
       <motion.section
         initial={{ opacity: 0, y: 16 }}
@@ -588,7 +626,14 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
               </tr>
             </thead>
             <tbody>
-              {complianceCurrent.slice(0, 80).map((row, idx) => (
+              {complianceCurrent
+                .filter((row) =>
+                  advisorNameFilter
+                    ? row.nombreAsesor.toLowerCase().includes(advisorNameFilter.toLowerCase())
+                    : true
+                )
+                .slice(0, 80)
+                .map((row, idx) => (
                 <tr key={`${row.cedulaAsesor}-${idx}`} className="border-b border-slate-800/60">
                   <td className="py-2 pr-3">{row.director}</td>
                   <td className="py-2 pr-3">{row.regional}</td>
@@ -601,9 +646,13 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
                   <td className="py-2 pr-3">{row.cantidadVentas}</td>
                   <td className="py-2 pr-3">{money(row.nosFalta)}</td>
                   <td className="py-2 pr-3">{row.debemosHacerDiario === null ? '-' : money(row.debemosHacerDiario)}</td>
-                  <td className="py-2 pr-3">{pct(row.porcentajeCumplimiento)}</td>
+                  <td className={`py-2 pr-3 ${semaphoreClass(row.porcentajeCumplimiento)}`}>
+                    {semaphoreEmoji(row.porcentajeCumplimiento)} {pct(row.porcentajeCumplimiento)}
+                  </td>
                   <td className="py-2 pr-3">{money(row.proyeccionCierre)}</td>
-                  <td className="py-2 pr-3">{pct(row.porcentajeProyeccion)}</td>
+                  <td className={`py-2 pr-3 ${semaphoreClass(row.porcentajeProyeccion)}`}>
+                    {pct(row.porcentajeProyeccion)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -631,7 +680,14 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
               </tr>
             </thead>
             <tbody>
-              {compliancePrevious.slice(0, 80).map((row, idx) => (
+              {compliancePrevious
+                .filter((row) =>
+                  advisorNameFilter
+                    ? row.nombreAsesor.toLowerCase().includes(advisorNameFilter.toLowerCase())
+                    : true
+                )
+                .slice(0, 80)
+                .map((row, idx) => (
                 <tr key={`${row.cedulaAsesor}-prev-${idx}`} className="border-b border-slate-800/60">
                   <td className="py-2 pr-3">{row.director}</td>
                   <td className="py-2 pr-3">{row.regional}</td>
@@ -643,7 +699,9 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
                   <td className="py-2 pr-3">{money(row.llevamos)}</td>
                   <td className="py-2 pr-3">{row.cantidadVentas}</td>
                   <td className="py-2 pr-3">{money(row.nosFalta)}</td>
-                  <td className="py-2 pr-3">{pct(row.porcentajeCumplimiento)}</td>
+                  <td className={`py-2 pr-3 ${semaphoreClass(row.porcentajeCumplimiento)}`}>
+                    {semaphoreEmoji(row.porcentajeCumplimiento)} {pct(row.porcentajeCumplimiento)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -663,7 +721,7 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
                   <th className="py-2 pr-3">Llevamos</th>
                   <th className="py-2 pr-3">% 100%</th>
                   <th className="py-2 pr-3">Falta</th>
-                  <th className="py-2 pr-3">Meta diaria</th>
+                  <th className="py-2 pr-3">Debo diario</th>
                   <th className="py-2 pr-3">Presupuesto 120%</th>
                   <th className="py-2 pr-3">% 120%</th>
                   <th className="py-2 pr-3">Proyeccion</th>
@@ -672,14 +730,18 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
               <tbody>
                 {regionalCurrent.map((row, idx) => (
                   <tr key={`reg-cur-${idx}`} className="border-b border-slate-800/60">
-                    <td className="py-2 pr-3">{row.regional}</td>
+                    <td className="py-2 pr-3 font-medium">{row.regional}</td>
                     <td className="py-2 pr-3">{money(row.presupuesto100)}</td>
                     <td className="py-2 pr-3">{money(row.llevamos)}</td>
-                    <td className="py-2 pr-3">{pct(row.porcentajeCumplimiento100)}</td>
-                    <td className="py-2 pr-3">{money(row.falta)}</td>
+                    <td className={`py-2 pr-3 ${semaphoreClass(row.porcentajeCumplimiento100)}`}>
+                      {semaphoreEmoji(row.porcentajeCumplimiento100)} {pct(row.porcentajeCumplimiento100)}
+                    </td>
+                    <td className="py-2 pr-3 text-rose-300">{money(row.falta)}</td>
                     <td className="py-2 pr-3">{row.metaDiariaRequerida === null ? '-' : money(row.metaDiariaRequerida)}</td>
                     <td className="py-2 pr-3">{money(row.presupuesto120)}</td>
-                    <td className="py-2 pr-3">{pct(row.porcentajeCumplimiento120)}</td>
+                    <td className={`py-2 pr-3 ${semaphoreClass(row.porcentajeCumplimiento120)}`}>
+                      {semaphoreEmoji(row.porcentajeCumplimiento120)} {pct(row.porcentajeCumplimiento120)}
+                    </td>
                     <td className="py-2 pr-3">{money(row.proyeccionCierre)}</td>
                   </tr>
                 ))}
@@ -709,16 +771,22 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
               <tbody>
                 {regionalPrevious.map((row, idx) => (
                   <tr key={`reg-prev-${idx}`} className="border-b border-slate-800/60">
-                    <td className="py-2 pr-3">{row.regional}</td>
+                    <td className="py-2 pr-3 font-medium">{row.regional}</td>
                     <td className="py-2 pr-3">{money(row.presupuesto100)}</td>
                     <td className="py-2 pr-3">{money(row.llevamos)}</td>
-                    <td className="py-2 pr-3">{pct(row.porcentajeCumplimiento100)}</td>
+                    <td className={`py-2 pr-3 ${semaphoreClass(row.porcentajeCumplimiento100)}`}>
+                      {semaphoreEmoji(row.porcentajeCumplimiento100)} {pct(row.porcentajeCumplimiento100)}
+                    </td>
                     <td className="py-2 pr-3">{money(row.presupuesto120)}</td>
-                    <td className="py-2 pr-3">{pct(row.porcentajeCumplimiento120)}</td>
+                    <td className={`py-2 pr-3 ${semaphoreClass(row.porcentajeCumplimiento120)}`}>
+                      {semaphoreEmoji(row.porcentajeCumplimiento120)} {pct(row.porcentajeCumplimiento120)}
+                    </td>
                     <td className="py-2 pr-3">{money(row.aprobado)}</td>
-                    <td className="py-2 pr-3">{pct(row.porcentajeCumplimientoAprobado)}</td>
+                    <td className={`py-2 pr-3 ${semaphoreClass(row.porcentajeCumplimientoAprobado)}`}>
+                      {pct(row.porcentajeCumplimientoAprobado)}
+                    </td>
                     <td className="py-2 pr-3">{pct(row.porcentajeAprobadoVsCantado)}</td>
-                    <td className="py-2 pr-3">{pct(row.porcentajeCaidasVsCantadas)}</td>
+                    <td className="py-2 pr-3 text-rose-300">{pct(row.porcentajeCaidasVsCantadas)}</td>
                   </tr>
                 ))}
               </tbody>
