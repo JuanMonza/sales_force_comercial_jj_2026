@@ -22,5 +22,14 @@ export class ImportsController {
     }
     return this.importsService.importSalesCsv(user, file.buffer);
   }
-}
 
+  @Post('sales-xlsx')
+  @Roles(Role.ADMINISTRADOR, Role.DIRECTOR, Role.COORDINADOR)
+  @UseInterceptors(FileInterceptor('file'))
+  importSalesXlsx(@CurrentUser() user: RequestUser, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('Debes enviar un archivo XLSX');
+    }
+    return this.importsService.importSalesXlsx(user, file.buffer);
+  }
+}

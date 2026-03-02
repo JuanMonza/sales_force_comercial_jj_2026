@@ -16,6 +16,8 @@ services:
       - ./sql/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
       - ./sql/002_partitions.sql:/docker-entrypoint-initdb.d/002_partitions.sql:ro
       - ./sql/003_seed.sql:/docker-entrypoint-initdb.d/003_seed.sql:ro
+      - ./sql/005_enterprise_extensions.sql:/docker-entrypoint-initdb.d/005_enterprise_extensions.sql:ro
+      - ./sql/006_operational_versioning.sql:/docker-entrypoint-initdb.d/006_operational_versioning.sql:ro
 
   redis:
     image: redis:7
@@ -64,4 +66,3 @@ services:
 
 volumes:
   pgdata:
-

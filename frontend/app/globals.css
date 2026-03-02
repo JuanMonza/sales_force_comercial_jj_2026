@@ -10,6 +10,7 @@
   --text-primary: #f2f6ff;
   --text-muted: #9eb0d1;
   --accent: #23c7d9;
+  --accent-2: #6ef2c8;
 }
 
 * {
@@ -44,6 +45,16 @@ h4 {
   backdrop-filter: blur(14px);
   border-radius: 18px;
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(35, 199, 217, 0.08), transparent 35%, rgba(110, 242, 200, 0.07));
 }
 
 .fade-in {
@@ -61,3 +72,80 @@ h4 {
   }
 }
 
+button {
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+/* ── Inputs ───────────────────────────────────── */
+.input-field {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(110,242,200,0.18);
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  color: #f2f6ff;
+  font-size: 0.875rem;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input-field:focus {
+  border-color: rgba(35,199,217,0.6);
+}
+.input-field::placeholder {
+  color: #5f7494;
+}
+.input-field option {
+  background: #111a2d;
+}
+
+/* ── Botones ──────────────────────────────────── */
+.btn-primary {
+  background: rgba(35,199,217,0.2);
+  border: 1px solid rgba(35,199,217,0.45);
+  color: #23c7d9;
+  border-radius: 8px;
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-primary:hover {
+  background: rgba(35,199,217,0.35);
+}
+.btn-secondary {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #9eb0d1;
+  border-radius: 8px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-secondary:hover {
+  background: rgba(255,255,255,0.1);
+}
+.btn-danger {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.35);
+  color: #f87171;
+  border-radius: 8px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-danger:hover {
+  background: rgba(239,68,68,0.25);
+}
+
+/* ── Colores de texto extras ──────────────────── */
+.text-rose { color: #f87171; }
+.text-rose-300 { color: #fca5a5; }
+.border-rose\/40 { border-color: rgba(248,113,113,0.4); }
+.hover\:bg-rose\/10:hover { background: rgba(248,113,113,0.1); }

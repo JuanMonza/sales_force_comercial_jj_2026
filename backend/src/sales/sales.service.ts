@@ -1,14 +1,37 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { RequestUser } from '../common/interfaces/request-user.interface';
 import { Role } from '../common/types/role.enum';
 import { DatabaseService } from '../database/database.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { QuerySalesDto } from './dto/query-sales.dto';
+import { UpdateSaleDto } from './dto/update-sale.dto';
 
 type AdvisorScopeRow = {
   advisor_id: string;
   zone_id: string;
   regional_id: string;
+};
+
+type SaleRow = {
+  id: string;
+  tenant_id: string;
+  advisor_id: string;
+  coordinator_id: string | null;
+  director_id: string | null;
+  regional_id: string;
+  zone_id: string;
+  plan_id: string | null;
+  status_id: string | null;
+  sale_amount: string;
+  approved_amount: string;
+  is_fallen: boolean;
+  sale_date: string;
+  reported_at: string;
+  note: string | null;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 @Injectable()
@@ -233,6 +256,160 @@ export class SalesService {
     `;
 
     const { rows } = await this.db.query(sql, params);
+    return rows;
+  }
+
+  private async getSaleForUpdate(tenantId: string, saleId: string, saleDate?: string) {
+    const params: unknown[] = [tenantId, saleId];
+    let dateFilter = '';
+    if (saleDate) {
+      params.push(saleDate);
+      dateFilter = `AND s.sale_date = $${params.length}::date`;
+    }
+
+    const { rows } = await this.db.query<SaleRow>(
+      `
+        SELECT
+          s.id, s.tenant_id, s.advisor_id, s.coordinator_id, s.director_id, s.regional_id, s.zone_id,
+          s.plan_id, s.status_id, s.sale_amount, s.approved_amount, s.is_fallen, s.sale_date, s.reported_at,
+          s.note, s.created_by, s.updated_by, s.created_at, s.updated_at
+        FROM sales s
+        WHERE s.tenant_id = $1
+          AND s.id = $2
+          ${dateFilter}
+          AND s.deleted_at IS NULL
+        ORDER BY s.sale_date DESC
+        LIMIT 1
+      `,
+      params
+    );
+
+    return rows[0] ?? null;
+  }
+
+  async update(actor: RequestUser, saleId: string, dto: UpdateSaleDto) {
+    const existing = await this.getSaleForUpdate(actor.tenantId, saleId, dto.saleDate);
+    if (!existing) {
+      throw new NotFoundException('Venta no encontrada');
+    }
+
+    await this.db.query(
+      `
+        UPDATE sales
+        SET
+          plan_id = COALESCE($4, plan_id),
+          status_id = COALESCE($5, status_id),
+          sale_amount = COALESCE($6, sale_amount),
+          approved_amount = COALESCE($7, approved_amount),
+          is_fallen = COALESCE($8, is_fallen),
+          note = COALESCE($9, note),
+          updated_by = $10,
+          updated_at = NOW()
+        WHERE tenant_id = $1
+          AND id = $2
+          AND sale_date = $3::date
+          AND deleted_at IS NULL
+      `,
+      [
+        actor.tenantId,
+        saleId,
+        existing.sale_date,
+        dto.planId ?? null,
+        dto.statusId ?? null,
+        dto.saleAmount ?? null,
+        dto.approvedAmount ?? null,
+        typeof dto.isFallen === 'boolean' ? dto.isFallen : null,
+        dto.note ?? null,
+        actor.userId
+      ]
+    );
+
+    const updated = await this.getSaleForUpdate(actor.tenantId, saleId, existing.sale_date);
+    if (!updated) {
+      throw new NotFoundException('Venta no encontrada despues de actualizar');
+    }
+
+    const versionResult = await this.db.query<{ next_version: number }>(
+      `
+        SELECT COALESCE(MAX(version_no), 0) + 1 AS next_version
+        FROM sale_versions
+        WHERE tenant_id = $1
+          AND sale_id = $2
+          AND sale_date = $3::date
+      `,
+      [actor.tenantId, saleId, existing.sale_date]
+    );
+    const versionNo = versionResult.rows[0]?.next_version ?? 1;
+
+    await this.db.query(
+      `
+        INSERT INTO sale_versions (
+          tenant_id, sale_id, sale_date, version_no, changed_by, change_reason, old_data, new_data
+        ) VALUES ($1, $2, $3::date, $4, $5, $6, $7::jsonb, $8::jsonb)
+      `,
+      [
+        actor.tenantId,
+        saleId,
+        existing.sale_date,
+        versionNo,
+        actor.userId,
+        dto.changeReason ?? 'Actualizacion manual segura',
+        JSON.stringify(existing),
+        JSON.stringify(updated)
+      ]
+    );
+
+    await this.db.query(
+      `
+        INSERT INTO record_versions (
+          tenant_id, entity_name, record_id, version_no, changed_by, change_reason, old_data, new_data
+        ) VALUES ($1, 'sales', $2, $3, $4, $5, $6::jsonb, $7::jsonb)
+      `,
+      [
+        actor.tenantId,
+        saleId,
+        versionNo,
+        actor.userId,
+        dto.changeReason ?? 'Actualizacion manual segura',
+        JSON.stringify(existing),
+        JSON.stringify(updated)
+      ]
+    );
+
+    return {
+      updated: true,
+      saleId,
+      saleDate: existing.sale_date,
+      versionNo
+    };
+  }
+
+  async getVersions(actor: RequestUser, saleId: string, saleDate?: string) {
+    const params: unknown[] = [actor.tenantId, saleId];
+    let dateFilter = '';
+    if (saleDate) {
+      params.push(saleDate);
+      dateFilter = `AND sale_date = $${params.length}::date`;
+    }
+
+    const { rows } = await this.db.query(
+      `
+        SELECT
+          version_no,
+          changed_by,
+          change_reason,
+          old_data,
+          new_data,
+          created_at
+        FROM sale_versions
+        WHERE tenant_id = $1
+          AND sale_id = $2
+          ${dateFilter}
+        ORDER BY version_no DESC
+      `,
+      params
+    );
+
     return rows;
   }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { KpiCard } from '@/components/KpiCard';
 import { SalesTrendChart } from '@/components/SalesTrendChart';
 import { apiFetch } from '@/lib/api';
@@ -75,13 +76,18 @@ export default function DashboardHomePage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <header className="glass-card p-5">
+      <motion.header
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45 }}
+        className="glass-card p-5"
+      >
         <p className="text-xs uppercase tracking-[0.15em] text-slate-400">Panel ejecutivo</p>
         <h1 className="text-3xl font-semibold mt-1">Vista general comercial</h1>
         <p className="text-slate-300 text-sm mt-2">
           Monitoreo de mes actual vs anterior, seguimiento de reportes y asesores en riesgo.
         </p>
-      </header>
+      </motion.header>
 
       {error ? <p className="text-rose text-sm">{error}</p> : null}
 

@@ -184,7 +184,7 @@ export class UsersService {
   }
 
   async update(actor: RequestUser, id: string, dto: UpdateUserDto) {
-    await this.findOne(actor, id);
+    const previous = await this.findOne(actor, id);
 
     let passwordHash: string | undefined;
     if (dto.password) {
@@ -216,7 +216,38 @@ export class UsersService {
       ]
     );
 
-    return this.findOne(actor, id);
+    const updated = await this.findOne(actor, id);
+
+    const versionQuery = await this.db.query<{ next_version: number }>(
+      `
+        SELECT COALESCE(MAX(version_no), 0) + 1 AS next_version
+        FROM record_versions
+        WHERE tenant_id = $1
+          AND entity_name = 'users'
+          AND record_id = $2
+      `,
+      [actor.tenantId, id]
+    );
+
+    const versionNo = versionQuery.rows[0]?.next_version ?? 1;
+    await this.db.query(
+      `
+        INSERT INTO record_versions (
+          tenant_id, entity_name, record_id, version_no, changed_by, change_reason, old_data, new_data
+        ) VALUES ($1, 'users', $2, $3, $4, $5, $6::jsonb, $7::jsonb)
+      `,
+      [
+        actor.tenantId,
+        id,
+        versionNo,
+        actor.userId,
+        'Actualizacion segura de usuario',
+        JSON.stringify(previous),
+        JSON.stringify(updated)
+      ]
+    );
+
+    return updated;
   }
 
   async softDelete(actor: RequestUser, id: string) {

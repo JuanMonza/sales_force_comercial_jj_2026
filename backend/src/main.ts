@@ -9,6 +9,9 @@ const compression = require('compression');
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.disable('x-powered-by');
+  expressApp.set('trust proxy', 1);
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
@@ -18,7 +21,12 @@ async function bootstrap() {
       transform: true
     })
   );
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
+    })
+  );
   app.use(compression());
   app.enableCors({
     origin: configService.get<string>('CORS_ORIGIN', 'http://localhost:3000'),

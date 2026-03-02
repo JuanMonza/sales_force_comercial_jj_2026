@@ -1,49 +1,99 @@
 # Sales Force Comercial
 
-Sistema empresarial de ventas con arquitectura escalable estilo Power BI + Salesforce.
+Plataforma empresarial de analitica y gestion comercial estilo Power BI + Salesforce, multi-tenant y por roles.
 
 ## Stack
 
-- Frontend: Next.js 14, TypeScript, Tailwind CSS, Recharts
-- Backend: NestJS, TypeScript, PostgreSQL, Redis, JWT + RBAC
-- Infraestructura: Docker Compose (base local), preparado para Kubernetes
+- Frontend: Next.js 14, Tailwind CSS, Framer Motion, Recharts
+- Backend: NestJS, JWT + RBAC, PostgreSQL, Redis
+- Datos: particionamiento mensual, materialized views, versionado funcional
+- Operacion: Docker, Kubernetes-ready, Prometheus metrics, CI/CD
 
-## Estructura
+## Roles
 
-- `frontend/`: Aplicacion web para dashboard por rol
-- `backend/`: API REST con autenticacion y modulos de negocio
-- `sql/`: Modelo de base de datos, particiones y seeds
-- `docs/`: Arquitectura, API y guia tecnica
+- `ADMINISTRADOR`
+- `DIRECTOR`
+- `COORDINADOR`
+- `ASESOR`
 
-## Inicio Rapido
+## Ejecucion local (recomendada con Docker)
 
 1. Copiar variables:
    - `cp .env.example .env`
-2. Levantar servicios:
+2. Levantar todo:
    - `docker compose up --build`
-3. URLs:
+3. Abrir:
    - Frontend: `http://localhost:3000`
    - Backend: `http://localhost:4000/api`
-4. Usuarios seed:
-   - Admin: `admin@demo.com / Admin123!`
-   - Director: `director@demo.com / Admin123!`
-   - Coordinador: `coordinador@demo.com / Admin123!`
-   - Asesor: `asesor@demo.com / Admin123!`
 
-## Alcance Implementado
+Si ya tenias una base creada antes de estas extensiones, aplica SQL nuevos manualmente:
 
-- Multi-tenant basico por `x-tenant-id`
-- Autenticacion JWT
-- RBAC por rol (administrador, director, coordinador, asesor)
-- Registro y consulta de ventas
-- KPIs de mes actual vs anterior
-- Cumplimiento de asesores
-- Seguimiento de reportes
-- Importacion CSV de ventas
-- Exportacion basica en JSON/CSV desde endpoints
-- Auditoria basica de cambios
+- `sql/005_enterprise_extensions.sql`
+- `sql/006_operational_versioning.sql`
 
-## Notas
+## Ejecucion local sin Docker
 
-- El sistema es una base funcional enterprise-ready.
-- Para produccion: activar TLS, secretos gestionados, rotacion de llaves JWT, CI/CD y observabilidad completa.
+1. Instalar PostgreSQL y Redis locales.
+2. Ajustar `.env` con URLs locales.
+3. Backend:
+   - `cd backend`
+   - `npm install`
+   - `npm run start:dev`
+4. Frontend:
+   - `cd frontend`
+   - `npm install`
+   - `npm run dev`
+
+## Credenciales demo
+
+- Admin: `admin@demo.com / Admin123!`
+- Director: `director@demo.com / Admin123!`
+- Coordinador: `coordinador@demo.com / Admin123!`
+- Asesor: `asesor@demo.com / Admin123!`
+
+## Funcionalidad enterprise implementada
+
+- Dashboard comparativo mes actual vs anterior
+- Cumplimiento asesores (actual/anterior)
+- Como vamos regional (actual/anterior)
+- Ventas por dia y tracking de reportes
+- Importacion CSV y XLSX
+- Exportacion PDF y Excel
+- Edicion historica segura de ventas
+- Versionado de datos por registro (`sale_versions`, `record_versions`)
+- IA real:
+  - forecast predictivo (regresion lineal)
+  - deteccion de anomalias (z-score)
+  - recomendaciones automaticas
+- SaaS:
+  - planes
+  - suscripciones
+  - facturacion
+  - branding por tenant
+- Jobs batch nocturnos
+- Observabilidad con endpoint Prometheus `/api/metrics`
+- Hardening inicial:
+  - `helmet`
+  - `compression`
+  - throttling global
+
+## Documentacion
+
+- Arquitectura: `docs/architecture.md`
+- API: `docs/api.md`
+- Manual tecnico: `docs/manual_tecnico.md`
+- Performance / carga: `docs/performance.md`
+
+## CI/CD
+
+Pipeline GitHub Actions en `.github/workflows/ci.yml` con:
+
+- backend build/test/audit
+- frontend build
+
+## Siguiente bloque (pendiente intencional)
+
+Tal como acordamos, queda para el cierre final:
+
+- Admin completo de jerarquia y catalogos:
+  - CRUD de `regionals`, `zones`, `plans`, `services`, `status_catalog`, `budgets` desde panel (hoy parcial)

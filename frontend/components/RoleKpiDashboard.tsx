@@ -17,6 +17,7 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
+import { motion } from 'framer-motion';
 import { apiFetch } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import { KpiCard } from './KpiCard';
@@ -294,15 +295,26 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
 
   return (
     <div className="space-y-5">
-      <header className="glass-card p-5">
+      <motion.header
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45 }}
+        className="glass-card p-5"
+      >
         <p className="text-xs uppercase tracking-[0.15em] text-slate-400">{role}</p>
         <h1 className="text-3xl font-semibold mt-1">Dashboard de cumplimiento y comparativos</h1>
         <p className="text-slate-300 text-sm mt-2">
           Reportes de ventas, cumplimiento de asesores, avances regionales y seguimiento operativo.
         </p>
-      </header>
+      </motion.header>
 
-      <form onSubmit={onApplyFilters} className="glass-card p-4 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
+      <motion.form
+        onSubmit={onApplyFilters}
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05, duration: 0.45 }}
+        className="glass-card p-4 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3"
+      >
         <select
           value={filters.regionalId}
           onChange={(e) => setFilters((p) => ({ ...p, regionalId: e.target.value }))}
@@ -421,12 +433,18 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
           className="rounded-lg bg-white border border-slate-300 px-3 py-2 text-black"
         />
         <button className="rounded-lg bg-cyan text-ink font-semibold px-4 py-2">Aplicar filtros</button>
-      </form>
+      </motion.form>
 
       {error ? <p className="text-rose text-sm">{error}</p> : null}
       {loading ? <p className="text-slate-300 text-sm">Cargando dashboard...</p> : null}
 
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.2 }}
+        transition={{ duration: 0.4 }}
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+      >
         <div className="glass-card p-4 space-y-3">
           <h2 className="text-lg font-semibold">Reporte de ventas mes en curso</h2>
           <div className="grid grid-cols-2 gap-3">
@@ -474,9 +492,15 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
             </ResponsiveContainer>
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="glass-card p-4">
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.2 }}
+        transition={{ duration: 0.4 }}
+        className="glass-card p-4"
+      >
         <h2 className="text-lg font-semibold mb-3">Tendencia temporal y picos de actividad</h2>
         <div className="h-72">
           <ResponsiveContainer>
@@ -491,7 +515,7 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </section>
+      </motion.section>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="glass-card p-4">
@@ -509,7 +533,7 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
           </div>
         </div>
         <div className="glass-card p-4">
-          <h3 className="font-semibold mb-2">Distribución por status (mes actual)</h3>
+          <h3 className="font-semibold mb-2">Distribucion por status (mes actual)</h3>
           <div className="h-64">
             <ResponsiveContainer>
               <PieChart>

@@ -10,10 +10,14 @@ type SidebarProps = {
 
 const items = [
   { href: '/dashboard', label: 'Resumen' },
-  { href: '/dashboard/director', label: 'Panel Director' },
+  // { href: '/dashboard/director', label: 'Panel Director' },  // Rol Director — deshabilitado temporalmente
   { href: '/dashboard/coordinador', label: 'Panel Coordinador' },
   { href: '/dashboard/sales', label: 'Ventas' },
-  { href: '/dashboard/users', label: 'Usuarios' }
+  { href: '/dashboard/operations', label: 'Operaciones' },
+  { href: '/dashboard/ai', label: 'IA Comercial' },
+  // { href: '/dashboard/saas', label: 'SaaS' },  // Módulo SaaS — deshabilitado (uso empresa interna)
+  { href: '/dashboard/users', label: 'Usuarios' },
+  { href: '/dashboard/admin', label: 'Catálogos' }
 ];
 
 export function Sidebar({ user }: SidebarProps) {
@@ -29,9 +33,23 @@ export function Sidebar({ user }: SidebarProps) {
         {items
           .filter((item) => {
             if (item.href === '/dashboard/users') return user.role === 'ADMINISTRADOR';
-            if (item.href === '/dashboard/director') return user.role === 'DIRECTOR' || user.role === 'ADMINISTRADOR';
+            // if (item.href === '/dashboard/director') return user.role === 'DIRECTOR' || user.role === 'ADMINISTRADOR';
             if (item.href === '/dashboard/coordinador') {
               return user.role === 'COORDINADOR' || user.role === 'ADMINISTRADOR';
+            }
+            // if (item.href === '/dashboard/saas') return user.role === 'ADMINISTRADOR';
+            if (item.href === '/dashboard/admin') return user.role === 'ADMINISTRADOR';
+            if (item.href === '/dashboard/operations') {
+              // return user.role === 'ADMINISTRADOR' || user.role === 'DIRECTOR' || user.role === 'COORDINADOR';
+              return user.role === 'ADMINISTRADOR' || user.role === 'COORDINADOR';
+            }
+            if (item.href === '/dashboard/ai') {
+              return (
+                user.role === 'ADMINISTRADOR' ||
+                // user.role === 'DIRECTOR' ||   // Director deshabilitado temporalmente
+                user.role === 'COORDINADOR' ||
+                user.role === 'ASESOR'
+              );
             }
             return true;
           })

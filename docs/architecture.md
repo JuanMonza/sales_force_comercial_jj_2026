@@ -2,52 +2,61 @@
 
 ## Resumen
 
-El sistema esta compuesto por tres capas principales:
+Arquitectura empresarial multi-tenant con:
 
-- Frontend `Next.js` para experiencia de usuario y dashboards.
-- Backend `NestJS` para reglas de negocio, seguridad y analitica.
-- Datos `PostgreSQL + Redis` para persistencia transaccional y cache de KPIs.
+- Frontend: Next.js + Tailwind + Framer Motion
+- Backend: NestJS modular (REST)
+- Datos: PostgreSQL particionado + Redis cache
+- Operacion: Docker/Kubernetes-ready, jobs nocturnos y observabilidad Prometheus
 
-## Componentes
+## Modulos Backend
 
-1. Frontend
-- App Router en Next.js.
-- Sesion JWT almacenada en navegador.
-- Dashboard adaptado por rol con filtros y visualizaciones.
+1. Core
+- `AuthModule`: login JWT y scope por rol
+- `UsersModule`: CRUD de usuarios y asignacion jerarquica
+- `SalesModule`: registro/consulta de ventas y edicion historica segura
+- `KpiModule`: reporteria analitica (mes actual vs anterior)
+- `AuditModule`: logs tecnicos
 
-2. Backend
-- API REST modular.
-- `AuthModule` para login JWT.
-- `UsersModule` para administracion de usuarios.
-- `SalesModule` para registro y consulta de ventas.
-- `KpiModule` para calculo de indicadores mensuales y seguimiento.
-- `ImportsModule` para carga CSV.
-- `AuditModule` para trazabilidad.
+2. Enterprise
+- `ImportsModule`: importacion CSV/XLSX
+- `ExportsModule`: exportacion PDF/Excel
+- `BusinessEditsModule`: edicion global de presupuestos + versionado por registro
+- `AiModule`: forecast predictivo real, anomalias y recomendaciones
+- `SaasModule`: planes, suscripciones, facturacion y branding tenant
+- `JobsModule`: batch nocturno (refresh materialized views + snapshots IA)
+- `ObservabilityModule`: metricas HTTP + endpoint `/api/metrics`
 
-3. Base de datos
-- Modelo multi-tenant por `tenant_id`.
-- Tabla `sales` particionada por mes.
-- Indices para filtros de fecha, asesor, zona, regional, estado y plan.
-- Materialized view para resumen mensual.
+## Modelo de datos
 
-## Seguridad
+Base transaccional en PostgreSQL:
 
-- JWT con expiracion configurable.
-- RBAC por roles `ADMINISTRADOR`, `DIRECTOR`, `COORDINADOR`, `ASESOR`.
-- Restricciones por jerarquia:
-  - Director: regional propia.
-  - Coordinador: zona propia.
-  - Asesor: ventas propias.
-- Auditoria de cambios via triggers SQL.
+- `sales` particionada por mes (`RANGE sale_date`)
+- indices por `tenant_id + fecha + asesor/zona/regional/status/plan`
+- tablas de negocio: `users`, `regionals`, `zones`, `plans`, `services`, `budgets`, `status_catalog`
+- tablas enterprise: `sale_versions`, `record_versions`, `ai_forecast_snapshots`, `saas_plans`, `tenant_subscriptions`,
+  `billing_invoices`, `tenant_branding`
 
-## Escalabilidad
+## Seguridad y Hardening
 
-- Particionamiento mensual de `sales` para gran volumen.
-- Cache de KPIs con Redis.
-- Docker para despliegue local y base para orquestacion.
-- Preparado para evolucionar a:
-  - Kubernetes
-  - Balanceador
-  - CDN
-  - Data warehouse externo
+- JWT + RBAC por rol
+- alcance de datos por jerarquia (director/coordinador/asesor)
+- `helmet` + `compression`
+- `ThrottlerGuard` global (rate limiting)
+- soft delete en entidades criticas
+- auditoria y versionado funcional por registro
 
+## Escalamiento y rendimiento
+
+- particionamiento mensual
+- materialized view `mv_monthly_sales_summary`
+- cache Redis para KPIs
+- job nocturno para precomputo
+- script k6 con umbral `p95 < 2s`
+
+## Observabilidad
+
+- metricas Prometheus en `/api/metrics`
+- histogramas de latencia HTTP
+- conteo de requests por ruta/metodo/status
+- stack opcional Prometheus + Grafana en `infra/observability`
