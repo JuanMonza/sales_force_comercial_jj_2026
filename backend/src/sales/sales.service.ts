@@ -235,5 +235,157 @@ export class SalesService {
     const { rows } = await this.db.query(sql, params);
     return rows;
   }
-}
 
+  async getCatalogs(actor: RequestUser) {
+    const tenantId = actor.tenantId;
+    let regionalIds: string[] = [];
+    let zoneIds: string[] = [];
+
+    if (actor.role === Role.DIRECTOR && actor.regionalId) {
+      regionalIds = [actor.regionalId];
+    } else if (actor.role === Role.COORDINADOR && actor.zoneId) {
+      zoneIds = [actor.zoneId];
+      const zoneResult = await this.db.query<{ regional_id: string }>(
+        'SELECT regional_id FROM zones WHERE id = $1 LIMIT 1',
+        [actor.zoneId]
+      );
+      const regionalId = zoneResult.rows[0]?.regional_id;
+      if (regionalId) {
+        regionalIds = [regionalId];
+      }
+    } else if (actor.role === Role.ASESOR && actor.zoneId) {
+      zoneIds = [actor.zoneId];
+      const zoneResult = await this.db.query<{ regional_id: string }>(
+        'SELECT regional_id FROM zones WHERE id = $1 LIMIT 1',
+        [actor.zoneId]
+      );
+      const regionalId = zoneResult.rows[0]?.regional_id;
+      if (regionalId) {
+        regionalIds = [regionalId];
+      }
+    }
+
+    const regionalsWhere = regionalIds.length
+      ? `AND r.id = ANY($2::uuid[])`
+      : '';
+    const zonesWhere = zoneIds.length
+      ? `AND z.id = ANY($2::uuid[])`
+      : regionalIds.length
+        ? `AND z.regional_id = ANY($2::uuid[])`
+        : '';
+
+    const regionalsParams: unknown[] = [tenantId];
+    if (regionalIds.length) {
+      regionalsParams.push(regionalIds);
+    }
+
+    const zonesParams: unknown[] = [tenantId];
+    if (zoneIds.length) {
+      zonesParams.push(zoneIds);
+    } else if (regionalIds.length) {
+      zonesParams.push(regionalIds);
+    }
+
+    const [regionals, zones, directors, coordinators, advisors, plans, statuses, services] = await Promise.all([
+      this.db.query(
+        `
+          SELECT r.id, r.code, r.name
+          FROM regionals r
+          WHERE r.tenant_id = $1
+            AND r.deleted_at IS NULL
+            ${regionalsWhere}
+          ORDER BY r.name
+        `,
+        regionalsParams
+      ),
+      this.db.query(
+        `
+          SELECT z.id, z.code, z.name, z.regional_id
+          FROM zones z
+          WHERE z.tenant_id = $1
+            AND z.deleted_at IS NULL
+            ${zonesWhere}
+          ORDER BY z.name
+        `,
+        zonesParams
+      ),
+      this.db.query(
+        `
+          SELECT u.id, (u.first_name || ' ' || u.last_name) AS name
+          FROM users u
+          JOIN roles r ON r.id = u.role_id AND r.role_key = 'DIRECTOR'
+          WHERE u.tenant_id = $1
+            AND u.deleted_at IS NULL
+          ORDER BY name
+        `,
+        [tenantId]
+      ),
+      this.db.query(
+        `
+          SELECT u.id, (u.first_name || ' ' || u.last_name) AS name
+          FROM users u
+          JOIN roles r ON r.id = u.role_id AND r.role_key = 'COORDINADOR'
+          WHERE u.tenant_id = $1
+            AND u.deleted_at IS NULL
+          ORDER BY name
+        `,
+        [tenantId]
+      ),
+      this.db.query(
+        `
+          SELECT u.id, (u.first_name || ' ' || u.last_name) AS name
+          FROM users u
+          JOIN roles r ON r.id = u.role_id AND r.role_key = 'ASESOR'
+          WHERE u.tenant_id = $1
+            AND u.deleted_at IS NULL
+          ORDER BY name
+        `,
+        [tenantId]
+      ),
+      this.db.query(
+        `
+          SELECT id, code, name
+          FROM plans
+          WHERE tenant_id = $1
+            AND deleted_at IS NULL
+            AND is_active = TRUE
+          ORDER BY name
+        `,
+        [tenantId]
+      ),
+      this.db.query(
+        `
+          SELECT id, code, name
+          FROM status_catalog
+          WHERE tenant_id = $1
+            AND deleted_at IS NULL
+            AND is_active = TRUE
+          ORDER BY name
+        `,
+        [tenantId]
+      ),
+      this.db.query(
+        `
+          SELECT id, code, name
+          FROM services
+          WHERE tenant_id = $1
+            AND deleted_at IS NULL
+            AND is_active = TRUE
+          ORDER BY name
+        `,
+        [tenantId]
+      )
+    ]);
+
+    return {
+      regionals: regionals.rows,
+      zones: zones.rows,
+      directors: directors.rows,
+      coordinators: coordinators.rows,
+      advisors: advisors.rows,
+      plans: plans.rows,
+      statuses: statuses.rows,
+      services: services.rows
+    };
+  }
+}

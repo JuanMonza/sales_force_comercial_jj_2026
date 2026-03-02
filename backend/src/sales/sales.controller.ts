@@ -25,5 +25,10 @@ export class SalesController {
   findAll(@CurrentUser() user: RequestUser, @Query() query: QuerySalesDto) {
     return this.salesService.findAll(user, query);
   }
-}
 
+  @Get('catalogs')
+  @Roles(Role.ADMINISTRADOR, Role.DIRECTOR, Role.COORDINADOR, Role.ASESOR)
+  getCatalogs(@CurrentUser() user: RequestUser) {
+    return this.salesService.getCatalogs(user);
+  }
+}

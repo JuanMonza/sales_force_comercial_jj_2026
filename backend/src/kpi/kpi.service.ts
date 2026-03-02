@@ -84,6 +84,26 @@ export class KpiService {
       params.push(dto.planId);
       filters.push(`${alias}.plan_id = $${params.length}`);
     }
+    if (dto.serviceId) {
+      params.push(dto.serviceId);
+      filters.push(
+        `EXISTS (
+          SELECT 1
+          FROM sale_services ss
+          WHERE ss.sale_id = ${alias}.id
+            AND ss.sale_date = ${alias}.sale_date
+            AND ss.service_id = $${params.length}
+        )`
+      );
+    }
+    if (dto.startDate) {
+      params.push(dto.startDate);
+      filters.push(`${alias}.sale_date >= $${params.length}::date`);
+    }
+    if (dto.endDate) {
+      params.push(dto.endDate);
+      filters.push(`${alias}.sale_date <= $${params.length}::date`);
+    }
     if (dto.quincena) {
       if (dto.quincena === 1) {
         filters.push(`EXTRACT(DAY FROM ${alias}.sale_date) BETWEEN 1 AND 15`);
@@ -159,6 +179,155 @@ export class KpiService {
 
     await this.cache.set(cacheKey, response, 180);
     return response;
+  }
+
+  private async getSalesReportByPeriod(
+    actor: RequestUser,
+    dto: QueryKpiDto,
+    periodStart: string,
+    periodEnd: string
+  ) {
+    const params: unknown[] = [actor.tenantId];
+    const filters = this.addScopeFilters(actor, dto, params);
+    params.push(periodStart, periodEnd);
+    const periodStartPos = params.length - 1;
+    const periodEndPos = params.length;
+
+    const baseFilteredCte = `
+      WITH filtered AS (
+        SELECT s.*
+        FROM sales s
+        WHERE ${filters.join(' AND ')}
+          AND s.sale_date >= $${periodStartPos}::date
+          AND s.sale_date < $${periodEndPos}::date
+      )
+    `;
+
+    const [summary, quincena, byPlan, byStatus, byServices, trend] = await Promise.all([
+      this.db.query(
+        `
+          ${baseFilteredCte}
+          SELECT
+            COUNT(*)::int AS total_ventas_reportadas,
+            COALESCE(SUM(sale_amount), 0)::numeric(16,2) AS nominal_reportado
+          FROM filtered
+        `,
+        params
+      ),
+      this.db.query(
+        `
+          ${baseFilteredCte}
+          SELECT
+            CASE WHEN EXTRACT(DAY FROM sale_date) <= 15 THEN 1 ELSE 2 END::int AS quincena,
+            COUNT(*)::int AS cantidad_ventas,
+            COALESCE(SUM(sale_amount), 0)::numeric(16,2) AS nominal
+          FROM filtered
+          GROUP BY 1
+          ORDER BY 1
+        `,
+        params
+      ),
+      this.db.query(
+        `
+          ${baseFilteredCte}
+          SELECT
+            COALESCE(p.name, 'Sin plan') AS plan,
+            COUNT(*)::int AS cantidad_ventas,
+            COALESCE(SUM(f.sale_amount), 0)::numeric(16,2) AS nominal
+          FROM filtered f
+          LEFT JOIN plans p ON p.id = f.plan_id
+          GROUP BY COALESCE(p.name, 'Sin plan')
+          ORDER BY nominal DESC
+        `,
+        params
+      ),
+      this.db.query(
+        `
+          ${baseFilteredCte}
+          SELECT
+            COALESCE(sc.name, 'Sin status') AS status,
+            COUNT(*)::int AS cantidad_ventas,
+            COALESCE(SUM(f.sale_amount), 0)::numeric(16,2) AS nominal
+          FROM filtered f
+          LEFT JOIN status_catalog sc ON sc.id = f.status_id
+          GROUP BY COALESCE(sc.name, 'Sin status')
+          ORDER BY nominal DESC
+        `,
+        params
+      ),
+      this.db.query(
+        `
+          ${baseFilteredCte}
+          SELECT
+            COALESCE(sv.name, 'Sin servicio') AS servicio,
+            COUNT(*)::int AS cantidad_ventas,
+            COALESCE(SUM(ss.nominal_amount), 0)::numeric(16,2) AS nominal
+          FROM filtered f
+          JOIN sale_services ss ON ss.sale_id = f.id AND ss.sale_date = f.sale_date
+          LEFT JOIN services sv ON sv.id = ss.service_id
+          GROUP BY COALESCE(sv.name, 'Sin servicio')
+          ORDER BY nominal DESC
+        `,
+        params
+      ),
+      this.db.query(
+        `
+          ${baseFilteredCte}
+          SELECT
+            sale_date,
+            COUNT(*)::int AS cantidad_ventas,
+            COALESCE(SUM(sale_amount), 0)::numeric(16,2) AS nominal
+          FROM filtered
+          GROUP BY sale_date
+          ORDER BY sale_date
+        `,
+        params
+      )
+    ]);
+
+    const peaks = [...trend.rows]
+      .sort((a: any, b: any) => Number(b.nominal) - Number(a.nominal))
+      .slice(0, 5);
+
+    return {
+      resumen: summary.rows[0] ?? {
+        total_ventas_reportadas: 0,
+        nominal_reportado: 0
+      },
+      quincena: quincena.rows,
+      plan: byPlan.rows,
+      status: byStatus.rows,
+      servicios: byServices.rows,
+      tendencia: trend.rows,
+      picosActividad: peaks
+    };
+  }
+
+  async getSalesReportComparative(actor: RequestUser, dto: QueryKpiDto) {
+    const bounds = this.getMonthBounds(dto.month);
+    const [current, previous] = await Promise.all([
+      this.getSalesReportByPeriod(actor, dto, bounds.currentStart, bounds.currentEnd),
+      this.getSalesReportByPeriod(actor, dto, bounds.previousStart, bounds.previousEnd)
+    ]);
+
+    const currentNominal = Number((current.resumen as any).nominal_reportado ?? 0);
+    const previousNominal = Number((previous.resumen as any).nominal_reportado ?? 0);
+    const nominalVariation = currentNominal - previousNominal;
+    const nominalVariationPct =
+      previousNominal > 0 ? Number(((nominalVariation / previousNominal) * 100).toFixed(2)) : null;
+
+    return {
+      month: bounds.currentStart.slice(0, 7),
+      comparativo: {
+        nominalVariation,
+        nominalVariationPct,
+        totalSalesVariation:
+          Number((current.resumen as any).total_ventas_reportadas ?? 0) -
+          Number((previous.resumen as any).total_ventas_reportadas ?? 0)
+      },
+      mesActual: current,
+      mesAnterior: previous
+    };
   }
 
   async getAdvisorCompliance(actor: RequestUser, dto: QueryKpiDto, previous = false) {

@@ -19,6 +19,11 @@ export class KpiController {
     return this.kpiService.getSalesSummary(user, dto);
   }
 
+  @Get('sales-report-comparative')
+  getSalesReportComparative(@CurrentUser() user: RequestUser, @Query() dto: QueryKpiDto) {
+    return this.kpiService.getSalesReportComparative(user, dto);
+  }
+
   @Get('advisor-compliance/current')
   getAdvisorComplianceCurrent(@CurrentUser() user: RequestUser, @Query() dto: QueryKpiDto) {
     return this.kpiService.getAdvisorCompliance(user, dto, false);
@@ -49,4 +54,3 @@ export class KpiController {
     return this.kpiService.getReportingTracking(user);
   }
 }
-

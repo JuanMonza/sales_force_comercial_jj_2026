@@ -35,10 +35,21 @@ export class QueryKpiDto {
   planId?: string;
 
   @IsOptional()
+  @IsUUID()
+  serviceId?: string;
+
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @IsOptional()
   @Transform(({ value }) => (value ? Number(value) : undefined))
   @IsInt()
   @Min(1)
   @Max(2)
   quincena?: number;
 }
-

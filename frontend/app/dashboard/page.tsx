@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { KpiCard } from '@/components/KpiCard';
 import { SalesTrendChart } from '@/components/SalesTrendChart';
 import { apiFetch } from '@/lib/api';
@@ -31,6 +32,7 @@ type ComplianceRow = {
 };
 
 export default function DashboardHomePage() {
+  const router = useRouter();
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [reporting, setReporting] = useState<ReportingTracking | null>(null);
   const [dailySales, setDailySales] = useState<any[]>([]);
@@ -41,6 +43,15 @@ export default function DashboardHomePage() {
     const token = getToken();
     const user = getUser();
     if (!token || !user) return;
+
+    if (user.role === 'DIRECTOR') {
+      router.replace('/dashboard/director');
+      return;
+    }
+    if (user.role === 'COORDINADOR') {
+      router.replace('/dashboard/coordinador');
+      return;
+    }
 
     Promise.all([
       apiFetch<SummaryResponse>('/kpis/summary', { token }),
@@ -55,7 +66,7 @@ export default function DashboardHomePage() {
         setCompliance(complianceRes);
       })
       .catch((err: any) => setError(err.message || 'No fue posible cargar KPIs'));
-  }, []);
+  }, [router]);
 
   const topRisk = useMemo(
     () => [...compliance].sort((a, b) => a.porcentajeCumplimiento - b.porcentajeCumplimiento).slice(0, 8),
@@ -121,4 +132,3 @@ export default function DashboardHomePage() {
     </div>
   );
 }
-

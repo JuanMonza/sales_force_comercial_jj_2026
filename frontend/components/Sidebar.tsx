@@ -10,6 +10,8 @@ type SidebarProps = {
 
 const items = [
   { href: '/dashboard', label: 'Resumen' },
+  { href: '/dashboard/director', label: 'Panel Director' },
+  { href: '/dashboard/coordinador', label: 'Panel Coordinador' },
   { href: '/dashboard/sales', label: 'Ventas' },
   { href: '/dashboard/users', label: 'Usuarios' }
 ];
@@ -25,7 +27,14 @@ export function Sidebar({ user }: SidebarProps) {
 
       <nav className="space-y-2 mb-6">
         {items
-          .filter((item) => (item.href === '/dashboard/users' ? user.role === 'ADMINISTRADOR' : true))
+          .filter((item) => {
+            if (item.href === '/dashboard/users') return user.role === 'ADMINISTRADOR';
+            if (item.href === '/dashboard/director') return user.role === 'DIRECTOR' || user.role === 'ADMINISTRADOR';
+            if (item.href === '/dashboard/coordinador') {
+              return user.role === 'COORDINADOR' || user.role === 'ADMINISTRADOR';
+            }
+            return true;
+          })
           .map((item) => (
             <Link
               key={item.href}
@@ -51,4 +60,3 @@ export function Sidebar({ user }: SidebarProps) {
     </aside>
   );
 }
-
