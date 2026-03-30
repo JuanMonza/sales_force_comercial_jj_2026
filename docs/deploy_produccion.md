@@ -16,7 +16,7 @@ Publicar plataforma en modo real:
 - `app.tudominio.com` -> Frontend (Vercel)
 - `api.tudominio.com` -> Backend NestJS (Docker)
 - Backend conecta a Postgres y Redis de produccion
-- AppSheet llama `https://api.tudominio.com/api/appsheet/sales?...`
+- AppSheet llama `https://api.tudominio.com/api/appsheet/sales`
 
 Nota: Vercel no corre `docker compose` para backend. El backend va en otro proveedor.
 
@@ -57,6 +57,8 @@ DATABASE_URL=<postgres-produccion-url>
 REDIS_URL=<redis-produccion-url>
 CORS_ORIGIN=https://app.tudominio.com
 APPSHEET_API_KEY=<api-key-larga-y-privada>
+APPSHEET_IDEMPOTENCY_TTL_SECONDS=86400
+APPSHEET_IDEMPOTENCY_LOCK_TTL_SECONDS=30
 ```
 
 ### Frontend (Vercel)
@@ -83,14 +85,17 @@ NEXT_PUBLIC_DEFAULT_TENANT_ID=<uuid-tenant-real>
    - `sql/006_operational_versioning.sql`
 4. Validar backend:
    - `GET https://api.tudominio.com/api/health`
-   - `GET https://api.tudominio.com/api/appsheet/ping?apiKey=<key>`
+   - `GET https://api.tudominio.com/api/appsheet/ping` con header `x-api-key: <APPSHEET_API_KEY>`
 5. Desplegar frontend en Vercel:
    - Root: `frontend`
    - Variables `NEXT_PUBLIC_*`
    - Dominio `app.tudominio.com`
 6. Configurar AppSheet webhook:
    - URL:
-     `POST https://api.tudominio.com/api/appsheet/sales?apiKey=<APPSHEET_API_KEY>`
+     `POST https://api.tudominio.com/api/appsheet/sales`
+   - Headers:
+     - `x-api-key: <APPSHEET_API_KEY>`
+     - `x-idempotency-key: <<[WebhookEventId]>>` (o UUID unico por fila/evento)
    - Body:
      ```json
      {
@@ -120,9 +125,9 @@ NEXT_PUBLIC_DEFAULT_TENANT_ID=<uuid-tenant-real>
 ## 7. Riesgos y mitigacion
 
 - Riesgo: duplicado por reintentos webhook
-  - Mitigar con idempotencia (`external_id` unico)
+  - Mitigar con `x-idempotency-key` + cache Redis
 - Riesgo: uso de apiKey en query string
-  - Mitigar moviendo clave a header o firma HMAC
+  - Mitigar usando solo header `x-api-key` en produccion
 - Riesgo: CORS abierto en produccion
   - Mitigar con lista estricta de dominios
 
@@ -133,4 +138,3 @@ NEXT_PUBLIC_DEFAULT_TENANT_ID=<uuid-tenant-real>
 3. Confirmar fila en DB `sales`.
 4. Confirmar KPIs y tablas del dashboard.
 5. Revisar logs backend sin errores 4xx/5xx repetitivos.
-

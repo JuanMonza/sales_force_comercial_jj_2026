@@ -120,3 +120,36 @@ Job nocturno programado:
 
 - `GET /metrics` (Prometheus format)
 - `GET /health`
+
+## AppSheet Integration
+
+Headers requeridos:
+
+- `x-api-key: <APPSHEET_API_KEY>`
+- `x-idempotency-key: <id-unico-por-venta>` (solo en `POST /appsheet/sales`)
+
+Compatibilidad temporal:
+
+- En `development` se permite `?apiKey=...` para pruebas locales.
+- En `production` se exige header `x-api-key`.
+
+Endpoints:
+
+- `GET /appsheet/ping`
+- `GET /appsheet/advisor/:document`
+- `GET /appsheet/catalogs`
+- `GET /appsheet/sales?advisorDocument=<cedula>&limit=50`
+- `POST /appsheet/sales`
+
+Body `POST /appsheet/sales`:
+
+```json
+{
+  "advisorDocument": "12345678",
+  "saleAmount": 120000,
+  "saleDate": "2026-03-30",
+  "planId": "optional-uuid",
+  "statusId": "optional-uuid",
+  "note": "optional"
+}
+```

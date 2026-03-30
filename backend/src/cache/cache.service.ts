@@ -25,6 +25,11 @@ export class CacheService implements OnModuleDestroy {
     await this.redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);
   }
 
+  async setIfNotExists(key: string, value: unknown, ttlSeconds = 300): Promise<boolean> {
+    const result = await this.redis.set(key, JSON.stringify(value), 'EX', ttlSeconds, 'NX');
+    return result === 'OK';
+  }
+
   async del(key: string): Promise<void> {
     await this.redis.del(key);
   }
@@ -33,4 +38,3 @@ export class CacheService implements OnModuleDestroy {
     await this.redis.quit();
   }
 }
-

@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { CacheService } from '../cache/cache.service';
 import { DatabaseService } from '../database/database.service';
+import { CreateAppsheetSaleDto } from './dto/create-appsheet-sale.dto';
 
 type AdvisorRow = {
   user_id: string;
@@ -27,16 +29,50 @@ type SaleRow = {
   created_at: string;
 };
 
+type CreateSaleResult = {
+  id: string;
+  message: string;
+  idempotentReplay?: boolean;
+};
+
 @Injectable()
 export class AppsheetService {
+  private readonly idempotencyResultTtlSeconds: number;
+  private readonly idempotencyLockTtlSeconds: number;
+
   constructor(
     private readonly db: DatabaseService,
-    private readonly config: ConfigService
-  ) {}
+    private readonly config: ConfigService,
+    private readonly cache: CacheService
+  ) {
+    this.idempotencyResultTtlSeconds = Number(
+      this.config.get<string>('APPSHEET_IDEMPOTENCY_TTL_SECONDS', '86400')
+    );
+    this.idempotencyLockTtlSeconds = Number(
+      this.config.get<string>('APPSHEET_IDEMPOTENCY_LOCK_TTL_SECONDS', '30')
+    );
+  }
 
-  validateApiKey(apiKey: string) {
-    const expected = this.config.get<string>('APPSHEET_API_KEY') ?? 'appsheet-key-default';
-    if (apiKey !== expected) {
+  validateApiKey(headerApiKey?: string, queryApiKey?: string) {
+    const expected = this.config.get<string>('APPSHEET_API_KEY');
+    if (!expected || expected.trim().length < 16) {
+      throw new UnauthorizedException('APPSHEET_API_KEY no configurada de forma segura');
+    }
+
+    const activeKey = (headerApiKey ?? '').trim();
+    if (activeKey.length > 0) {
+      if (activeKey !== expected) {
+        throw new UnauthorizedException('API key invalida');
+      }
+      return;
+    }
+
+    if (this.config.get<string>('NODE_ENV', 'development') === 'production') {
+      throw new UnauthorizedException('En produccion la API key debe enviarse en header x-api-key');
+    }
+
+    const legacyKey = (queryApiKey ?? '').trim();
+    if (legacyKey !== expected) {
       throw new UnauthorizedException('API key invalida');
     }
   }
@@ -119,46 +155,72 @@ export class AppsheetService {
     zoneId: string,
     regionalId: string,
     tenantId: string,
-    body: {
-      saleAmount: number;
-      saleDate: string;
-      planId?: string;
-      statusId?: string;
-      note?: string;
-      advisorDocument: string;
+    body: CreateAppsheetSaleDto,
+    idempotencyKey?: string
+  ): Promise<CreateSaleResult> {
+    const normalizedIdempotencyKey = (idempotencyKey ?? '').trim();
+    if (!normalizedIdempotencyKey) {
+      throw new BadRequestException('Header x-idempotency-key es obligatorio');
     }
-  ) {
+
+    const resultKey = `appsheet:idempotency:result:${tenantId}:${normalizedIdempotencyKey}`;
+    const lockKey = `appsheet:idempotency:lock:${tenantId}:${normalizedIdempotencyKey}`;
+
+    const cachedResult = await this.cache.get<CreateSaleResult>(resultKey);
+    if (cachedResult) {
+      return { ...cachedResult, idempotentReplay: true };
+    }
+
+    const lockAcquired = await this.cache.setIfNotExists(
+      lockKey,
+      { createdAt: new Date().toISOString() },
+      this.idempotencyLockTtlSeconds
+    );
+    if (!lockAcquired) {
+      const resultAfterLock = await this.cache.get<CreateSaleResult>(resultKey);
+      if (resultAfterLock) {
+        return { ...resultAfterLock, idempotentReplay: true };
+      }
+      throw new ConflictException('Solicitud duplicada en proceso, intenta de nuevo en unos segundos');
+    }
+
+    try {
     // Resolver coordinator_id y director_id desde la jerarquia
-    const hierRes = await this.db.query<{ coordinator_id: string | null; director_id: string | null }>(
-      `
-      SELECT
-        (SELECT u.id FROM users u JOIN coordinator_profiles cp ON cp.user_id = u.id WHERE cp.zone_id = $2 AND u.tenant_id = $1 AND u.deleted_at IS NULL LIMIT 1) AS coordinator_id,
-        (SELECT u.id FROM users u JOIN director_profiles dp ON dp.user_id = u.id WHERE dp.regional_id = $3 AND u.tenant_id = $1 AND u.deleted_at IS NULL LIMIT 1) AS director_id
-      `,
-      [tenantId, zoneId, regionalId]
-    );
+      const hierRes = await this.db.query<{ coordinator_id: string | null; director_id: string | null }>(
+        `
+        SELECT
+          (SELECT u.id FROM users u JOIN coordinator_profiles cp ON cp.user_id = u.id WHERE cp.zone_id = $2 AND u.tenant_id = $1 AND u.deleted_at IS NULL LIMIT 1) AS coordinator_id,
+          (SELECT u.id FROM users u JOIN director_profiles dp ON dp.user_id = u.id WHERE dp.regional_id = $3 AND u.tenant_id = $1 AND u.deleted_at IS NULL LIMIT 1) AS director_id
+        `,
+        [tenantId, zoneId, regionalId]
+      );
 
-    const { coordinator_id, director_id } = hierRes.rows[0] ?? {};
+      const { coordinator_id, director_id } = hierRes.rows[0] ?? {};
 
-    const { rows } = await this.db.query<{ id: string }>(
-      `
-      INSERT INTO sales (
-        tenant_id, advisor_id, coordinator_id, director_id,
-        zone_id, regional_id, plan_id, status_id,
-        sale_amount, approved_amount, is_fallen, sale_date, note, reported_at
-      ) VALUES (
-        $1, $2, $3, $4,
-        $5, $6, $7, $8,
-        $9, $9, FALSE, $10, $11, NOW()
-      ) RETURNING id
-      `,
-      [
-        tenantId, advisorId, coordinator_id ?? null, director_id ?? null,
-        zoneId, regionalId, body.planId ?? null, body.statusId ?? null,
-        body.saleAmount, body.saleDate, body.note ?? null
-      ]
-    );
+      const { rows } = await this.db.query<{ id: string }>(
+        `
+        INSERT INTO sales (
+          tenant_id, advisor_id, coordinator_id, director_id,
+          zone_id, regional_id, plan_id, status_id,
+          sale_amount, approved_amount, is_fallen, sale_date, note, reported_at
+        ) VALUES (
+          $1, $2, $3, $4,
+          $5, $6, $7, $8,
+          $9, $9, FALSE, $10, $11, NOW()
+        ) RETURNING id
+        `,
+        [
+          tenantId, advisorId, coordinator_id ?? null, director_id ?? null,
+          zoneId, regionalId, body.planId ?? null, body.statusId ?? null,
+          body.saleAmount, body.saleDate, body.note ?? null
+        ]
+      );
 
-    return { id: rows[0].id, message: 'Venta registrada correctamente' };
+      const response: CreateSaleResult = { id: rows[0].id, message: 'Venta registrada correctamente' };
+      await this.cache.set(resultKey, response, this.idempotencyResultTtlSeconds);
+      return response;
+    } finally {
+      await this.cache.del(lockKey);
+    }
   }
 }
