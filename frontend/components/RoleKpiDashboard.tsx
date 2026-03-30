@@ -171,6 +171,8 @@ const initialFilters: DashboardFilters = {
   month: ''
 };
 
+const AUTO_REFRESH_MS = 15000;
+
 const PIE_COLORS = ['#23c7d9', '#6ef2c8', '#ffb142', '#ff6b81', '#748ffc', '#80ed99'];
 
 function money(v: number | string | null | undefined) {
@@ -212,6 +214,7 @@ function asDay(dateIso: string) {
 export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' }) {
   const [catalogs, setCatalogs] = useState<CatalogsResponse | null>(null);
   const [filters, setFilters] = useState<DashboardFilters>(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState<DashboardFilters>(initialFilters);
   const [report, setReport] = useState<SalesReportComparativeResponse | null>(null);
   const [complianceCurrent, setComplianceCurrent] = useState<AdvisorComplianceRow[]>([]);
   const [compliancePrevious, setCompliancePrevious] = useState<AdvisorComplianceRow[]>([]);
@@ -271,12 +274,19 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
   };
 
   useEffect(() => {
-    loadData(initialFilters);
-  }, []);
+    loadData(appliedFilters);
+  }, [appliedFilters]);
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      loadData(appliedFilters);
+    }, AUTO_REFRESH_MS);
+    return () => window.clearInterval(timerId);
+  }, [appliedFilters]);
 
   const onApplyFilters = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    loadData(filters);
+    setAppliedFilters({ ...filters });
   };
 
   const trendComparative = useMemo(() => {
@@ -474,6 +484,7 @@ export function RoleKpiDashboard({ role }: { role: 'DIRECTOR' | 'COORDINADOR' })
 
       {error ? <p className="text-rose text-sm">{error}</p> : null}
       {loading ? <p className="text-slate-300 text-sm">Cargando dashboard...</p> : null}
+      <p className="text-slate-400 text-xs">Actualizacion automatica cada 15 segundos.</p>
 
       {/* Leyenda semáforo */}
       <div className="glass-card px-4 py-2 flex flex-wrap gap-4 text-xs text-slate-300">

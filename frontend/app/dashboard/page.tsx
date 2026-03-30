@@ -34,6 +34,8 @@ type ComplianceRow = {
 
 type DailySaleRow = { fecha_diligenciamiento: string; nominal: string | number };
 
+const AUTO_REFRESH_MS = 15000;
+
 function semaphoreClass(v: number): string {
   if (v >= 100) return 'text-cyan-400';
   if (v >= 80)  return 'text-green-400';
@@ -83,6 +85,12 @@ export default function DashboardHomePage() {
   };
 
   useEffect(() => { loadData(month); }, []);
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      loadData(month);
+    }, AUTO_REFRESH_MS);
+    return () => window.clearInterval(timerId);
+  }, [month]);
 
   const topRisk = useMemo(
     () => [...compliance].sort((a, b) => a.porcentajeCumplimiento - b.porcentajeCumplimiento).slice(0, 8),
@@ -115,6 +123,7 @@ export default function DashboardHomePage() {
           />
           {loading && <span className="text-xs text-cyan-400 animate-pulse">Cargando...</span>}
         </div>
+        <p className="text-[11px] text-slate-400">Actualizacion automatica cada 15 segundos.</p>
       </motion.header>
 
       {error ? <p className="text-rose text-sm">{error}</p> : null}

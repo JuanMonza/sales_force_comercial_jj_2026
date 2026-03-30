@@ -12,14 +12,14 @@ Validar SLA de respuesta menor a 2 segundos (`p95 < 2000ms`) sobre endpoints cri
 ## Ejecucion
 
 1. Levantar stack:
-   - `docker compose up --build`
+   - `docker compose up --build` inicio de proyecto base para ejecutar canal 201
 2. Instalar k6 (si no esta instalado).
 3. Ejecutar prueba:
    - `k6 run scripts/load_test_k6.js`
 
 Variables opcionales:
 
-- `BASE_URL` (default `http://localhost:4000/api`)
+- `BASE_URL` (default `http://localhost:3001/api`)
 - `TENANT_ID` (default tenant demo)
 - `EMAIL`
 - `PASSWORD`

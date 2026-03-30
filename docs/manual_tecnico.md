@@ -40,6 +40,8 @@ Scripts autoejecutados al iniciar Postgres:
 
 ## 4. Credenciales demo
 
+usuarios logins para pruebas 
+
 - `admin@demo.com / Admin123!`
 - `director@demo.com / Admin123!`
 - `coordinador@demo.com / Admin123!`

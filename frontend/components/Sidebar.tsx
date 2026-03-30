@@ -16,6 +16,7 @@ const items = [
   { href: '/dashboard/coordinador', label: 'Panel Coordinador', icon: '[C]' },
   { href: '/dashboard/sales', label: 'Ventas', icon: '[$]' },
   { href: '/dashboard/operations', label: 'Operaciones', icon: '[O]' },
+  { href: '/dashboard/matriz-consultas', label: 'Matriz Consultas', icon: '[M]' },
   { href: '/dashboard/ai', label: 'IA Comercial', icon: '[IA]' },
   { href: '/dashboard/users', label: 'Usuarios', icon: '[U]' },
   { href: '/dashboard/admin', label: 'Catalogos', icon: '[A]' },
